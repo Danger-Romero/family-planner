@@ -1,0 +1,12 @@
+{
+  "tokenSetOrder": [
+    "global",
+    "material",
+    "material-theme/Light",
+    "material-theme/Light High Contrast",
+    "material-theme/Light Medium Contrast",
+    "material-theme/Dark",
+    "material-theme/Dark High Contrast",
+    "material-theme/Dark Medium Contrast"
+  ]
+}

@@ -4,11 +4,17 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "tokens": "node scripts/build-tokens.ts",
+    "predev": "npm run tokens",
     "dev": "vite",
+    "prebuild": "npm run tokens",
     "build": "vite build",
     "lint": "oxlint",
+    "typecheck": "tsc",
     "preview": "vite preview",
+    "prestorybook": "npm run tokens",
     "storybook": "storybook dev -p 6006",
+    "prebuild-storybook": "npm run tokens",
     "build-storybook": "storybook build"
   },
   "dependencies": {
@@ -22,6 +28,8 @@
     "@storybook/addon-mcp": "^10.6.6",
     "@storybook/addon-vitest": "^10.6.6",
     "@storybook/react-vite": "^10.6.6",
+    "@tokens-studio/sd-transforms": "^2.0.3",
+    "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
@@ -31,6 +39,8 @@
     "playwright": "latest",
     "prop-types": "latest",
     "storybook": "^10.6.6",
+    "style-dictionary": "^5.8.0",
+    "typescript": "^7.0.2",
     "vite": "^8.3.6",
     "vitest": "latest"
   }

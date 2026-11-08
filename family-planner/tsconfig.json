@@ -1,0 +1,23 @@
+{
+  // Type-checking only (`npm run typecheck`). Vite/Storybook compile the app, and Node runs
+  // the scripts/*.ts files directly by stripping the types, so nothing is emitted here.
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "types": ["node", "vite/client"],
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    // Keep the TypeScript to what Node can run without a build step.
+    "verbatimModuleSyntax": true,
+    "erasableSyntaxOnly": true,
+    "allowImportingTsExtensions": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
+  },
+  "include": ["src", "scripts"]
+}

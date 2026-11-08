@@ -1,0 +1,193 @@
+/* Styles for the Design Tokens docs pages only (TokenDocs.tsx). Not part of the app. */
+
+.td {
+  --td-border: #e6e6e6;
+  --td-muted: #6b6b6b;
+  margin: 16px 0 32px;
+  font: 14px/1.4 system-ui, sans-serif;
+  color: #1f1f1f;
+}
+
+/* index.css styles every <code> as a padded chip; keep it plain in here. */
+.td code {
+  display: inline;
+  padding: 0;
+  background: none;
+  border-radius: 0;
+  color: inherit;
+  font: 12px/1.4 ui-monospace, Menlo, Consolas, monospace;
+  overflow-wrap: anywhere;
+}
+
+.td-scroll {
+  overflow-x: auto;
+}
+
+.td-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.td-table th,
+.td-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--td-border);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.td-table thead th {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.td-table thead code,
+.td-table th[scope='row'] code {
+  display: block;
+  color: var(--td-muted);
+  font-weight: 400;
+}
+
+.td-name {
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.td-muted {
+  color: var(--td-muted);
+}
+
+.td-nowrap {
+  white-space: nowrap;
+}
+
+/* A cell or panel painted in its own theme (set with data-theme on the element). */
+.td-on-surface {
+  background: var(--schemes-surface);
+  color: var(--schemes-on-surface);
+}
+
+.td-swatch {
+  display: inline-block;
+  width: 32px;
+  height: 32px;
+  margin-right: 8px;
+  border-radius: 6px;
+  vertical-align: middle;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.12);
+}
+
+/* Seven columns have to fit the docs width: let the headers wrap and keep cells tight. */
+.td-schemes thead th {
+  white-space: normal;
+  vertical-align: bottom;
+}
+
+.td-schemes th[scope='row'] {
+  min-width: 200px;
+}
+
+.td-schemes td {
+  padding: 8px;
+  white-space: nowrap;
+}
+
+.td-schemes .td-swatch {
+  width: 28px;
+  height: 28px;
+}
+
+.td-schemes td code {
+  color: inherit;
+}
+
+/* Tonal palettes */
+.td-palette {
+  margin-bottom: 20px;
+}
+
+.td-strip {
+  display: flex;
+  margin: 6px 0 4px;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.12);
+}
+
+.td-tone {
+  flex: 1 1 0;
+  min-width: 0;
+  text-align: center;
+}
+
+.td-tone-swatch {
+  display: block;
+  height: 44px;
+}
+
+.td-tone-label {
+  display: block;
+  padding: 2px 0;
+  font-size: 10px;
+  color: var(--td-muted);
+  background: #fff;
+}
+
+/* Typography */
+.td-type-sample {
+  margin: 0;
+  color: #1f1f1f;
+}
+
+/* Elevation */
+.td-elevation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  padding: 32px;
+  border-radius: 12px;
+}
+
+.td-card {
+  flex: 1 1 140px;
+  padding: 20px 16px;
+  border-radius: 12px;
+  background: var(--schemes-surface-container-low);
+  color: var(--schemes-on-surface);
+}
+
+.td-card code {
+  display: block;
+  margin-top: 4px;
+  opacity: 0.75;
+}
+
+.td-shadow {
+  background: #fff;
+}
+
+/* Token table filter */
+.td-filter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.td-filter input {
+  flex: 1;
+  max-width: 420px;
+  padding: 8px 12px;
+  border: 1px solid #c4c4c4;
+  border-radius: 8px;
+  font: inherit;
+}
+
+.td-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

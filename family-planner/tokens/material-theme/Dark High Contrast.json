@@ -1,0 +1,200 @@
+{
+  "Schemes": {
+    "Primary": {
+      "$type": "color",
+      "$value": "#fbebff"
+    },
+    "Surface Tint": {
+      "$type": "color",
+      "$value": "#e0b8f6"
+    },
+    "On Primary": {
+      "$type": "color",
+      "$value": "#000000"
+    },
+    "Primary Container": {
+      "$type": "color",
+      "$value": "#dcb4f2"
+    },
+    "On Primary Container": {
+      "$type": "color",
+      "$value": "#170028"
+    },
+    "Secondary": {
+      "$type": "color",
+      "$value": "#fbebff"
+    },
+    "On Secondary": {
+      "$type": "color",
+      "$value": "#000000"
+    },
+    "Secondary Container": {
+      "$type": "color",
+      "$value": "#cebdd4"
+    },
+    "On Secondary Container": {
+      "$type": "color",
+      "$value": "#110717"
+    },
+    "Tertiary": {
+      "$type": "color",
+      "$value": "#ffeceb"
+    },
+    "On Tertiary": {
+      "$type": "color",
+      "$value": "#000000"
+    },
+    "Tertiary Container": {
+      "$type": "color",
+      "$value": "#f0b3b5"
+    },
+    "On Tertiary Container": {
+      "$type": "color",
+      "$value": "#1e0305"
+    },
+    "Error": {
+      "$type": "color",
+      "$value": "#ffece9"
+    },
+    "On Error": {
+      "$type": "color",
+      "$value": "#000000"
+    },
+    "Error Container": {
+      "$type": "color",
+      "$value": "#ffaea4"
+    },
+    "On Error Container": {
+      "$type": "color",
+      "$value": "#220001"
+    },
+    "Background": {
+      "$type": "color",
+      "$value": "#161217"
+    },
+    "On Background": {
+      "$type": "color",
+      "$value": "#e9e0e8"
+    },
+    "Surface": {
+      "$type": "color",
+      "$value": "#161217"
+    },
+    "On Surface": {
+      "$type": "color",
+      "$value": "#ffffff"
+    },
+    "Surface Variant": {
+      "$type": "color",
+      "$value": "#4b454d"
+    },
+    "On Surface Variant": {
+      "$type": "color",
+      "$value": "#ffffff"
+    },
+    "Outline": {
+      "$type": "color",
+      "$value": "#f8edf8"
+    },
+    "Outline Variant": {
+      "$type": "color",
+      "$value": "#c9c0ca"
+    },
+    "Shadow": {
+      "$type": "color",
+      "$value": "#000000"
+    },
+    "Scrim": {
+      "$type": "color",
+      "$value": "#000000"
+    },
+    "Inverse Surface": {
+      "$type": "color",
+      "$value": "#e9e0e8"
+    },
+    "Inverse On Surface": {
+      "$type": "color",
+      "$value": "#000000"
+    },
+    "Inverse Primary": {
+      "$type": "color",
+      "$value": "#5b3b6f"
+    },
+    "Primary Fixed": {
+      "$type": "color",
+      "$value": "#f4daff"
+    },
+    "On Primary Fixed": {
+      "$type": "color",
+      "$value": "#000000"
+    },
+    "Primary Fixed Dim": {
+      "$type": "color",
+      "$value": "#e0b8f6"
+    },
+    "On Primary Fixed Variant": {
+      "$type": "color",
+      "$value": "#200134"
+    },
+    "Secondary Fixed": {
+      "$type": "color",
+      "$value": "#efdcf5"
+    },
+    "On Secondary Fixed": {
+      "$type": "color",
+      "$value": "#000000"
+    },
+    "Secondary Fixed Dim": {
+      "$type": "color",
+      "$value": "#d2c1d8"
+    },
+    "On Secondary Fixed Variant": {
+      "$type": "color",
+      "$value": "#170d1e"
+    },
+    "Tertiary Fixed": {
+      "$type": "color",
+      "$value": "#ffdada"
+    },
+    "On Tertiary Fixed": {
+      "$type": "color",
+      "$value": "#000000"
+    },
+    "Tertiary Fixed Dim": {
+      "$type": "color",
+      "$value": "#f4b7b9"
+    },
+    "On Tertiary Fixed Variant": {
+      "$type": "color",
+      "$value": "#25070a"
+    },
+    "Surface Dim": {
+      "$type": "color",
+      "$value": "#161217"
+    },
+    "Surface Bright": {
+      "$type": "color",
+      "$value": "#544e55"
+    },
+    "Surface Container Lowest": {
+      "$type": "color",
+      "$value": "#000000"
+    },
+    "Surface Container Low": {
+      "$type": "color",
+      "$value": "#221e24"
+    },
+    "Surface Container": {
+      "$type": "color",
+      "$value": "#332f35"
+    },
+    "Surface Container High": {
+      "$type": "color",
+      "$value": "#3f3a40"
+    },
+    "Surface Container Highest": {
+      "$type": "color",
+      "$value": "#4a454b"
+    }
+  }
+}

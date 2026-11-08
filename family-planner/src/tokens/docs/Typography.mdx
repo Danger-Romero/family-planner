@@ -1,0 +1,21 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { TypeScale } from './TokenDocs';
+
+<Meta title="Design Tokens/Typography" />
+
+# Typography
+
+Each text style is split into one variable per property, because the CSS `font` shorthand cannot hold
+letter-spacing. For a style, use the variables that share its prefix:
+
+```css
+.title {
+  font-family: var(--material-theme-title-large-font-family);
+  font-weight: var(--material-theme-title-large-font-weight);
+  font-size: var(--material-theme-title-large-font-size);
+  line-height: var(--material-theme-title-large-line-height);
+  letter-spacing: var(--material-theme-title-large-letter-spacing);
+}
+```
+
+<TypeScale />

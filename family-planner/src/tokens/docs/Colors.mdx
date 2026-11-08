@@ -1,0 +1,20 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { ColorSchemes, TonalPalettes } from './TokenDocs';
+
+<Meta title="Design Tokens/Colors" />
+
+# Colors
+
+## Color schemes
+
+The color roles to use in components. Each one has a value per theme, and the CSS variable picks the
+value of the active theme (`data-theme`). Each column below is drawn in its own theme.
+
+<ColorSchemes />
+
+## Tonal palettes
+
+The palettes the schemes are built from (Material `ref` tokens), tone 0 = black and tone 100 = white.
+Use the scheme roles above in components. Hover over a tone to see its variable and value.
+
+<TonalPalettes prefix={['material-theme', 'ref']} />

@@ -1,0 +1,44 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+
+<Meta title="Design Tokens/Overview" />
+
+# Design tokens
+
+The design tokens come from Figma (Tokens Studio, Material Theme Builder). They are available to the
+app and to Storybook as CSS variables.
+
+## Using a token
+
+```css
+.event-card {
+  background: var(--schemes-surface-container);
+  color: var(--schemes-on-surface);
+  box-shadow: var(--m3-elevation-light-1);
+  font-family: var(--material-theme-body-large-font-family);
+  font-size: var(--material-theme-body-large-font-size);
+  line-height: var(--material-theme-body-large-line-height);
+}
+```
+
+Look up a variable name under **Colors**, **Typography**, **Elevation** or **All tokens**.
+The names follow the Figma names: `Schemes / On Surface` → `--schemes-on-surface`.
+
+## Themes
+
+The **Light** theme is applied by default. The other themes override only the `Schemes` colors.
+Switch theme by setting `data-theme` on any element. Everything inside that element uses the theme:
+
+```html
+<html data-theme="dark">
+```
+
+Available themes: `light`, `light-medium-contrast`, `light-high-contrast`, `dark`,
+`dark-medium-contrast`, `dark-high-contrast`.
+
+## Updating the tokens from Figma
+
+1. In Tokens Studio, export the tokens as multiple files into the `tokens/` folder (replace what is there).
+2. Run `npm run tokens`. It also runs automatically before `npm run dev`, `npm run build` and `npm run storybook`.
+
+`scripts/build-tokens.ts` converts `tokens/` into `src/tokens/generated/tokens.css` (the CSS variables) and
+`src/tokens/generated/tokens.ts` (the data behind these pages). Don't edit the generated files by hand.
