@@ -1,0 +1,9 @@
+[21:02:04.427] [INFO] [36mInitializing Storybook[39m
+[21:02:04.555] [DEBUG] Getting package.json info for /Users/adb/Library/CloudStorage/GoogleDrive-kwabbs@gmail.com/Mit drev/DMJX - Adjunkting it up/Master/ITU kandidat/E26/Technical Interaction Design/family-planner/Uden navn/family-planner/package.json...
+[21:02:04.555] [INFO] Package manager: npm
+[21:02:04.558] [ERROR] [38;2;241;97;97mError: ENOENT: no such file or directory, open './package.json'[39m
+    at readFileSync (node:fs:440:20)
+    at _JsPackageManager.getPackageJson (file:///Users/adb/.npm/_npx/05823ecb1a3a987d/node_modules/storybook/dist/_node-chunks/chunk-VNC56V3E.js:13981:23)
+    at get packageJson (file:///Users/adb/.npm/_npx/05823ecb1a3a987d/node_modules/storybook/dist/_node-chunks/chunk-VNC56V3E.js:14345:34)
+    at PreflightCheckCommand.checkPackageNameConflict (file:///Users/adb/.npm/_npx/05823ecb1a3a987d/node_modules/create-storybook/dist/_node-chunks/chunk-NGXBGL5G.js:663:39)
+    at PreflightCheckCommand.execute (file:///Users/adb/.npm/_npx/05823ecb1a3a987d/node_modules/create-storybook/dist/_node-chunks/chunk-NGXBGL5G.js:642:14)
