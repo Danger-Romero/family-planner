@@ -1,0 +1,87 @@
+erDiagram
+    FAMILY ||--o{ MEMBER : contains
+    FAMILY ||--o{ ITEM : owns
+    FAMILY ||--o{ WALL_DISPLAY : has
+    _User |o--o| MEMBER : account_for
+    MEMBER ||--o{ ITEM : creates
+    ITEM ||--o{ ASSIGNMENT : has
+    MEMBER ||--o{ ASSIGNMENT : receives
+    ITEM ||--o| REPEAT_RULE : follows
+    MEMBER ||--o{ SAVED_VIEW : owns
+    SAVED_VIEW ||--o{ SAVED_VIEW_MEMBER : includes
+    MEMBER ||--o{ SAVED_VIEW_MEMBER : selected_in
+    MEMBER ||--o{ BUSY_BLOCK : appears_in
+    ITEM ||--o{ BUSY_BLOCK : has
+
+    _User {
+        String objectId PK
+        String username
+        String email
+    }
+    FAMILY {
+        String objectId PK
+        String name
+    }
+    MEMBER {
+        String objectId PK
+        Pointer family FK
+        Pointer user FK "optional _User"
+        String name
+        String memberType "adult or child"
+        Date birthDate
+        Pointer defaultSavedView FK "optional Saved_View"
+    }
+    ITEM {
+        String objectId PK
+        Pointer family FK
+        Pointer createdBy FK "Member"
+        String kind "task or event"
+        String title
+        String note
+        Date dueAt
+        Date startsAt
+        Date endsAt
+        Boolean allDay
+        Boolean manuallyUrgent
+        Boolean completed
+        String visibility "everyone adults onlyMe"
+    }
+    BUSY_BLOCK {
+        String objectId PK
+        Pointer item FK
+        Pointer member FK
+        Date startsAt
+        Date endsAt
+    }
+    ASSIGNMENT {
+        String objectId PK
+        Pointer item FK
+        Pointer member FK
+        String role "responsible or attending"
+    }
+    REPEAT_RULE {
+        String objectId PK
+        Pointer item FK
+        Array weekdays "1 Mon to 7 Sun"
+        Date endDate
+        Date pausedFrom
+        Date pausedUntil
+    }
+    SAVED_VIEW {
+        String objectId PK
+        Pointer viewOwner FK "Member"
+        String name
+        String roleFilter "any responsible attending"
+    }
+    SAVED_VIEW_MEMBER {
+        String objectId PK
+        Pointer view FK
+        Pointer member FK
+    }
+    WALL_DISPLAY {
+        String objectId PK
+        Pointer family FK
+        String location
+        String layout
+        Number daysShown
+    }

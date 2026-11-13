@@ -1,122 +1,147 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { useEffect, useState } from "react";
+import { Link, Navigate, Route, Routes } from "react-router-dom";
+import AuthPage from "./pages/AuthPage.jsx";
+import FamilyPage from "./pages/FamilyPage.jsx";
+import OverviewPage from "./pages/OverviewPage.jsx";
+import ItemsPage from "./pages/ItemsPage.jsx";
+import SetupPage from "./pages/SetupPage.jsx";
+import { parseConfigured } from "./services/parse.js";
+import { currentUser, isInvalidSession, logOut } from "./services/authService.js";
+import { createFamily, loadFamily } from "./services/familyService.js";
+import { loadCurrentMember } from "./services/memberService.js";
+import "./App.css";
 
-function App() {
-  const [count, setCount] = useState(0)
+export default function App() {
+  const [user, setUser] = useState(() => parseConfigured ? currentUser() : null);
+  const [member, setMember] = useState(null);
+  const [family, setFamily] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [reload, setReload] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+
+    async function load() {
+      if (!user || !parseConfigured) return;
+      setLoading(true);
+      setError("");
+      try {
+        const loadedMember = await loadCurrentMember();
+        const loadedFamily = loadedMember ? await loadFamily(loadedMember.family) : null;
+        if (active) {
+          setMember(loadedMember);
+          setFamily(loadedFamily);
+        }
+      } catch (error) {
+        if (!active) return;
+        if (isInvalidSession(error)) {
+          // The cached login can outlive an account/session deleted in Back4App.
+          // Its token is already invalid, so a server logout failure can be ignored.
+          await logOut().catch(() => {});
+          if (active) {
+            setUser(null);
+            setMember(null);
+            setFamily(null);
+          }
+        } else {
+          setError(error.message);
+        }
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    load();
+    return () => { active = false; };
+  }, [user, reload]);
+
+  function handleAuthenticated(loggedInUser) {
+    setError("");
+    setLoading(true);
+    setMember(null);
+    setFamily(null);
+    setUser(loggedInUser);
+  }
+
+  async function handleCreate(name, memberName) {
+    const created = await createFamily(name, memberName);
+    // The user may have logged out while the request was running.
+    if (currentUser()?.id !== user.id) return;
+    setMember(created.member);
+    setFamily(created.family);
+  }
+
+  async function handleLogout() {
+    setLoggingOut(true);
+    setError("");
+    try {
+      await logOut();
+      setUser(null);
+      setMember(null);
+      setFamily(null);
+    } catch (error) {
+      setError(error.message);
+    } finally {
+      setLoggingOut(false);
+    }
+  }
+
+  if (!parseConfigured) return <SetupPage />;
+  if (!user) return <main><AuthPage onAuthenticated={handleAuthenticated} /></main>;
 
   return (
     <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
+      <header>
+        <p><strong>Family planner</strong></p>
+        <p>Signed in as {user.username}.</p>
+        {family && <p>Family: {family.name}</p>}
+        <nav aria-label="Main navigation">
+          <Link to="/">Overview</Link>{" | "}
+          <Link to="/items">Items</Link>{" | "}
+          <Link to="/family">Family</Link>
+        </nav>
+        <p><button type="button" onClick={handleLogout} disabled={loggingOut}>
+          {loggingOut ? "Logging out..." : "Log out"}
+        </button></p>
+      </header>
+      <main>
+        {loading ? <p role="status">Loading your family...</p> : error ? (
+          <>
+            <p role="alert">{error}</p>
+            <button type="button" onClick={() => setReload(reload + 1)}>Try again</button>
+          </>
+        ) : (
+          <Routes>
+            <Route
+              path="/"
+              element={family
+                ? <OverviewPage key={family.id} family={family} />
+                : <Navigate to="/family" replace />}
+            />
+            <Route
+              path="/items"
+              element={family
+                ? <ItemsPage key={family.id} family={family} member={member} />
+                : <Navigate to="/family" replace />}
+            />
+            <Route
+              path="/family"
+              element={
+                <FamilyPage
+                  key={family?.id ?? "new"}
+                  user={user}
+                  member={member}
+                  family={family}
+                  onCreate={handleCreate}
+                />
+              }
+            />
+            <Route path="*" element={<><h1>Page not found</h1><Link to="/">Back to overview</Link></>} />
+          </Routes>
+        )}
+      </main>
     </>
-  )
+  );
 }
-
-export default App
