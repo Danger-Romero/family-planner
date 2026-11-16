@@ -87,6 +87,17 @@ async function buildTheme(themeSet: string): Promise<TransformedToken[]> {
   return isDefault ? allTokens : allTokens.filter((token) => token.isSource);
 }
 
+/**
+ * Material Theme Builder exports extra tones in each reference palette (Ref / Primary / Primary4,
+ * Primary12, Primary99, …). We only keep the tones divisible by 5: 0, 5, 10 … 95, 100.
+ * Other tokens with numbers in their name, like the state-layer opacities, are not tones.
+ */
+function isKeptTone(token: TransformedToken): boolean {
+  if (token.$type !== 'color' || token.path[1] !== 'ref') return true;
+  const tone = token.path.at(-1)?.match(/(\d+)$/)?.[1];
+  return tone === undefined || Number(tone) % 5 === 0;
+}
+
 function toData(token: TransformedToken): TokenData {
   const value: unknown = token.$value;
   if (typeof value !== 'string' && typeof value !== 'number') {
@@ -117,7 +128,7 @@ for (const set of themeSets) {
   const name = set.slice(THEME_FOLDER.length + 1);
   const id = name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
   const selector = set === defaultSet ? `:root,\n[data-theme="${id}"]` : `[data-theme="${id}"]`;
-  themes.push({ id, name, selector, tokens: (await buildTheme(set)).map(toData) });
+  themes.push({ id, name, selector, tokens: (await buildTheme(set)).filter(isKeptTone).map(toData) });
 }
 const defaultTheme = themes.find((theme) => theme.name === DEFAULT_THEME)!;
 // Default theme first in the CSS, so the other themes' rules win when both match.
