@@ -93,24 +93,15 @@ export default function App() {
 
   return (
     <>
-      <header>
-        <p><strong>Family planner</strong></p>
-        <p>Signed in as {user.username}.</p>
-        {family && <p>Family: {family.name}</p>}
-        <nav aria-label="Main navigation">
-          <Link to="/">Overview</Link>{" | "}
-          <Link to="/items">Items</Link>{" | "}
-          <Link to="/family">Family</Link>
-        </nav>
-        <p><button type="button" onClick={handleLogout} disabled={loggingOut}>
-          {loggingOut ? "Logging out..." : "Log out"}
-        </button></p>
-      </header>
       <main>
         {loading ? <p role="status">Loading your family...</p> : error ? (
           <>
             <p role="alert">{error}</p>
             <button type="button" onClick={() => setReload(reload + 1)}>Try again</button>
+            {/* The Family page isn't shown here, so this is the only way to sign out. */}
+            <button type="button" onClick={handleLogout} disabled={loggingOut}>
+              {loggingOut ? "Logging out..." : "Log out"}
+            </button>
           </>
         ) : (
           <Routes>
@@ -135,6 +126,8 @@ export default function App() {
                   member={member}
                   family={family}
                   onCreate={handleCreate}
+                  onLogout={handleLogout}
+                  loggingOut={loggingOut}
                 />
               }
             />

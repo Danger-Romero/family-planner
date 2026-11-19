@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
+import Button from "@mui/material/Button";
 import FamilyForm from "../components/FamilyForm.jsx";
 import AddMemberForm from "../components/AddMemberForm.jsx";
 import Member from "../components/Member.jsx";
 import { loadMembers, addMember } from "../services/memberService.js";
 
-export default function FamilyPage({ user, member, family, onCreate }) {
+export default function FamilyPage({ user, member, family, onCreate, onLogout, loggingOut }) {
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -39,6 +40,16 @@ export default function FamilyPage({ user, member, family, onCreate }) {
     );
   }
 
+  // Family is the settings page, so signing out lives here.
+  const account = (
+    <>
+      <p>Signed in as {user.username}.</p>
+      <Button variant="outlined" onClick={onLogout} disabled={loggingOut}>
+        {loggingOut ? "Logging out..." : "Log out"}
+      </Button>
+    </>
+  );
+
   if (!family) {
     return (
       <>
@@ -46,6 +57,7 @@ export default function FamilyPage({ user, member, family, onCreate }) {
         <p>Create a family, or ask an adult family member to add your username: <strong>{user.username}</strong>.</p>
         <p>If someone has just added you, refresh the page to load your family.</p>
         <FamilyForm onCreate={onCreate} />
+        {account}
       </>
     );
   }
@@ -76,6 +88,7 @@ export default function FamilyPage({ user, member, family, onCreate }) {
           <AddMemberForm onAdd={handleAdd} />
         </>
       ) : !isAdult ? <p>Adult family members can add more members.</p> : null}
+      {account}
     </>
   );
 }
