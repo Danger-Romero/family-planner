@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
-import { Link, Navigate, Route, Routes } from "react-router-dom";
+import Button from "@mui/material/Button";
+import Stack from "@mui/material/Stack";
+import { Link, Navigate, Route, Routes, useNavigate } from "react-router-dom";
 import NavigationBar from "./components/NavigationBar.jsx";
 import AuthPage from "./pages/AuthPage.jsx";
 import CalendarPage from "./pages/CalendarPage.jsx";
@@ -22,6 +24,7 @@ export default function App() {
   const [error, setError] = useState("");
   const [loggingOut, setLoggingOut] = useState(false);
   const [reload, setReload] = useState(0);
+  const navigate = useNavigate();
 
   useEffect(() => {
     let active = true;
@@ -84,6 +87,8 @@ export default function App() {
       setUser(null);
       setMember(null);
       setFamily(null);
+      // Log out lives on the Family page; the next sign-in should start on Today.
+      navigate("/", { replace: true });
     } catch (error) {
       setError(error.message);
     } finally {
@@ -100,11 +105,13 @@ export default function App() {
         {loading ? <p role="status">Loading your family...</p> : error ? (
           <>
             <p role="alert">{error}</p>
-            <button type="button" onClick={() => setReload(reload + 1)}>Try again</button>
-            {/* The Family page isn't shown here, so this is the only way to sign out. */}
-            <button type="button" onClick={handleLogout} disabled={loggingOut}>
-              {loggingOut ? "Logging out..." : "Log out"}
-            </button>
+            <Stack direction="row" spacing={2}>
+              <Button variant="contained" onClick={() => setReload(reload + 1)}>Try again</Button>
+              {/* The Family page isn't shown here, so this is the only way to sign out. */}
+              <Button variant="outlined" onClick={handleLogout} disabled={loggingOut}>
+                {loggingOut ? "Logging out..." : "Log out"}
+              </Button>
+            </Stack>
           </>
         ) : (
           <Routes>
