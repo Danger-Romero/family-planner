@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate, Route, Routes } from "react-router-dom";
+import NavigationBar from "./components/NavigationBar.jsx";
 import AuthPage from "./pages/AuthPage.jsx";
+import CalendarPage from "./pages/CalendarPage.jsx";
 import FamilyPage from "./pages/FamilyPage.jsx";
 import OverviewPage from "./pages/OverviewPage.jsx";
 import ItemsPage from "./pages/ItemsPage.jsx";
+import PlanWeekPage from "./pages/PlanWeekPage.jsx";
 import SetupPage from "./pages/SetupPage.jsx";
 import { parseConfigured } from "./services/parse.js";
 import { currentUser, isInvalidSession, logOut } from "./services/authService.js";
@@ -118,6 +121,14 @@ export default function App() {
                 : <Navigate to="/family" replace />}
             />
             <Route
+              path="/calendar"
+              element={family ? <CalendarPage /> : <Navigate to="/family" replace />}
+            />
+            <Route
+              path="/plan-week"
+              element={family ? <PlanWeekPage /> : <Navigate to="/family" replace />}
+            />
+            <Route
               path="/family"
               element={
                 <FamilyPage
@@ -131,10 +142,12 @@ export default function App() {
                 />
               }
             />
-            <Route path="*" element={<><h1>Page not found</h1><Link to="/">Back to overview</Link></>} />
+            <Route path="*" element={<><h1>Page not found</h1><Link to="/">Back to Today</Link></>} />
           </Routes>
         )}
       </main>
+      {/* Hidden until there is a family: before that, every tab would lead to Family. */}
+      {!loading && !error && family && <NavigationBar />}
     </>
   );
 }
