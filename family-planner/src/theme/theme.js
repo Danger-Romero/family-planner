@@ -4,31 +4,17 @@
  * MUI reads every color from the token CSS variables (var(--schemes-…)) instead of fixed values,
  * so the `data-theme` themes (light, dark and the contrast variants) apply to MUI components too,
  * and a new token export from Figma updates them without touching this file.
+ *
+ * Besides MUI's own options, the theme adds:
+ * - a `tertiary` palette color, and
+ * - the M3 type scale as Typography variants: <Typography variant="titleMedium">.
  */
-import { createTheme, type CSSProperties } from '@mui/material/styles';
+import { createTheme } from '@mui/material/styles';
 import { buttonOverrides } from './components/button';
-import { scheme, stateLayer, typeRoles, typescale, typeVariant, withOpacity, type TypeVariant } from './m3';
+import { scheme, stateLayer, typeRoles, typescale, typeVariant, withOpacity } from './m3';
 
-type M3TypographyVariants = Record<TypeVariant, CSSProperties>;
-
-declare module '@mui/material/styles' {
-  interface Palette {
-    tertiary: Palette['primary'];
-  }
-  interface PaletteOptions {
-    tertiary?: PaletteOptions['primary'];
-  }
-  // The M3 type scale as Typography variants: <Typography variant="titleMedium">.
-  interface TypographyVariants extends M3TypographyVariants {}
-  interface TypographyVariantsOptions extends Partial<M3TypographyVariants> {}
-}
-
-declare module '@mui/material/Typography' {
-  interface TypographyPropsVariantOverrides extends Record<TypeVariant, true> {}
-}
-
-const colorRole = (role: string) => ({ main: scheme(role), contrastText: scheme(`on-${role}`) });
-const onSurface = (opacity: number) => withOpacity(scheme('on-surface'), opacity);
+const colorRole = (role) => ({ main: scheme(role), contrastText: scheme(`on-${role}`) });
+const onSurface = (opacity) => withOpacity(scheme('on-surface'), opacity);
 
 export const theme = createTheme({
   cssVariables: {
@@ -85,7 +71,7 @@ export const theme = createTheme({
     overline: typescale('label-small'),
     button: { ...typescale('label-large'), textTransform: 'none' },
     // And the M3 names: displayLarge … labelSmall.
-    ...(Object.fromEntries(typeRoles.map((role) => [typeVariant(role), typescale(role)])) as M3TypographyVariants),
+    ...Object.fromEntries(typeRoles.map((role) => [typeVariant(role), typescale(role)])),
   },
 
   components: {

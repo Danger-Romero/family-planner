@@ -2,7 +2,7 @@ import CssBaseline from '@mui/material/CssBaseline';
 import GlobalStyles from '@mui/material/GlobalStyles';
 import { ThemeProvider } from '@mui/material/styles';
 import { withThemeByDataAttribute } from '@storybook/addon-themes';
-import { defaultThemeId, themes } from '../src/tokens/generated/tokens.ts';
+import { defaultThemeId, themes } from '../src/tokens/generated/tokens.js';
 import { theme } from '../src/theme';
 
 // Same global stylesheets the app loads in src/main.jsx.

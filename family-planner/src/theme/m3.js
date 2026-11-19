@@ -1,25 +1,24 @@
 /**
- * Material 3 Expressive building blocks shared by the MUI theme (theme.ts) and the component
+ * Material 3 Expressive building blocks shared by the MUI theme (theme.js) and the component
  * styles in ./components.
  *
  * - Colors, type and elevation are our own design tokens: the CSS variables in tokens.css.
  * - Sizes, corners, state-layer opacities and motion are Google's published M3 values
  *   (Jetpack Compose `androidx.compose.material3.tokens`, token version 0.11).
  */
-import type { CSSProperties } from '@mui/material/styles';
 
 /** Project rule: every important touch target is at least 44×44 px. (M3 itself uses 48.) */
 export const minTouchTarget = 44;
 
 /** A color role from the Figma theme: scheme('on-primary') → 'var(--schemes-on-primary)'. */
-export const scheme = (role: string) => `var(--schemes-${role})`;
+export const scheme = (role) => `var(--schemes-${role})`;
 
 /** A color at an opacity, e.g. withOpacity(scheme('on-surface'), 0.38) for disabled text. */
-export const withOpacity = (color: string, opacity: number) =>
+export const withOpacity = (color, opacity) =>
   `color-mix(in srgb, ${color} ${Math.round(opacity * 1000) / 10}%, transparent)`;
 
 /** Opacity of the state layer M3 draws over a component while it is hovered, focused, etc. */
-export const stateLayer = { hover: 0.08, focus: 0.1, pressed: 0.1, dragged: 0.16 } as const;
+export const stateLayer = { hover: 0.08, focus: 0.1, pressed: 0.1, dragged: 0.16 };
 
 /** The M3 corner scale, in px. "Full" (a pill or circle) is half the component's height. */
 export const corner = {
@@ -32,11 +31,10 @@ export const corner = {
   extraLarge: 28,
   extraLargeIncreased: 32,
   extraExtraLarge: 48,
-} as const;
+};
 
 /** M3 elevation level 0–5 as a box-shadow, using the elevation tokens. */
-export const elevation = (level: 0 | 1 | 2 | 3 | 4 | 5) =>
-  level === 0 ? 'none' : `var(--m3-elevation-light-${level})`;
+export const elevation = (level) => (level === 0 ? 'none' : `var(--m3-elevation-light-${level})`);
 
 // ---------------------------------------------------------------------------------------------
 // Typography
@@ -58,23 +56,17 @@ export const typeRoles = [
   'label-large',
   'label-medium',
   'label-small',
-] as const;
-
-export type TypeRole = (typeof typeRoles)[number];
+];
 
 /** 'title-medium' → 'titleMedium', the name of the matching MUI Typography variant. */
-type CamelCase<S extends string> = S extends `${infer Head}-${infer Tail}` ? `${Head}${Capitalize<Tail>}` : S;
-export type TypeVariant = CamelCase<TypeRole>;
-export const typeVariant = (role: TypeRole) =>
-  role.replace(/-(\w)/g, (_, letter: string) => letter.toUpperCase()) as TypeVariant;
+export const typeVariant = (role) => role.replace(/-(\w)/g, (_, letter) => letter.toUpperCase());
 
-/** The CSS for one role of the type scale, read from the typography tokens. */
-export function typescale(role: TypeRole): CSSProperties {
-  const token = (property: string) => `var(--material-theme-${role}-${property})`;
+/** The CSS for one role of the type scale (one of `typeRoles`), read from the typography tokens. */
+export function typescale(role) {
+  const token = (property) => `var(--material-theme-${role}-${property})`;
   return {
     fontFamily: `${token('font-family')}, system-ui, sans-serif`,
-    // The weight is a CSS variable, which React's CSS types don't expect for fontWeight.
-    fontWeight: token('font-weight') as CSSProperties['fontWeight'],
+    fontWeight: token('font-weight'),
     fontSize: token('font-size'),
     lineHeight: token('line-height'),
     letterSpacing: token('letter-spacing'),
@@ -84,11 +76,19 @@ export function typescale(role: TypeRole): CSSProperties {
 // ---------------------------------------------------------------------------------------------
 // Motion
 
-/** An M3 motion spring (mass 1). A damping ratio of 1 settles without bouncing. */
-export interface Spring {
-  damping: number;
-  stiffness: number;
-}
+/**
+ * An M3 motion spring (mass 1). A damping ratio of 1 settles without bouncing.
+ * @typedef {object} Spring
+ * @property {number} damping
+ * @property {number} stiffness
+ */
+
+/**
+ * A spring as CSS.
+ * @typedef {object} Motion
+ * @property {number} duration How long the spring takes to settle, in ms.
+ * @property {string} easing A CSS `linear()` easing that traces the spring's movement.
+ */
 
 /** The M3 Expressive motion scheme. "Spatial" springs move things, "effects" springs fade colors. */
 export const springs = {
@@ -98,22 +98,17 @@ export const springs = {
   fastEffects: { damping: 1, stiffness: 3800 },
   defaultEffects: { damping: 1, stiffness: 1600 },
   slowEffects: { damping: 1, stiffness: 800 },
-} as const satisfies Record<string, Spring>;
-
-export interface Motion {
-  /** How long the spring takes to settle, in ms. */
-  duration: number;
-  /** A CSS `linear()` easing that traces the spring's movement. */
-  easing: string;
-}
+};
 
 /**
  * CSS can't run a spring, so this samples the spring's curve into a CSS `linear()` easing and
  * measures how long it takes to come to rest.
+ * @param {Spring} spring
+ * @returns {Motion}
  */
-export function springToCss({ damping, stiffness }: Spring): Motion {
+export function springToCss({ damping, stiffness }) {
   const omega = Math.sqrt(stiffness);
-  const position = (t: number) => {
+  const position = (t) => {
     if (damping >= 1) return 1 - (1 + omega * t) * Math.exp(-omega * t);
     const omegaD = omega * Math.sqrt(1 - damping * damping);
     const decay = Math.exp(-damping * omega * t);
@@ -134,10 +129,15 @@ export function springToCss({ damping, stiffness }: Spring): Motion {
   return { duration: Math.round(settled * 1000), easing: `linear(${points.join(', ')})` };
 }
 
+/** Every spring in `springs` as CSS, e.g. motion.defaultEffects → { duration, easing }. */
 export const motion = Object.fromEntries(
   Object.entries(springs).map(([name, spring]) => [name, springToCss(spring)]),
-) as Record<keyof typeof springs, Motion>;
+);
 
-/** A CSS `transition` that animates the given properties with one of the M3 springs. */
-export const transition = (properties: string[], { duration, easing }: Motion) =>
+/**
+ * A CSS `transition` that animates the given properties with one of the M3 springs.
+ * @param {string[]} properties
+ * @param {Motion} motion
+ */
+export const transition = (properties, { duration, easing }) =>
   properties.map((property) => `${property} ${duration}ms ${easing}`).join(', ');
