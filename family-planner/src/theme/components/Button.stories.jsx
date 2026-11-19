@@ -1,11 +1,9 @@
 import Add from '@mui/icons-material/Add';
 import ArrowForward from '@mui/icons-material/ArrowForward';
 import Event from '@mui/icons-material/Event';
-import Button, { type ButtonProps } from '@mui/material/Button';
+import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import type { Meta, StoryObj } from '@storybook/react-vite';
-import type { ReactNode } from 'react';
 import { expect } from 'storybook/test';
 import { minTouchTarget, scheme } from '../m3';
 
@@ -15,7 +13,7 @@ const types = [
   { variant: 'elevated', name: 'Elevated' },
   { variant: 'outlined', name: 'Outlined' },
   { variant: 'text', name: 'Text' },
-] as const satisfies { variant: ButtonProps['variant']; name: string }[];
+];
 
 const sizes = [
   { size: 'xsmall', name: 'Extra small', height: 32 },
@@ -23,14 +21,14 @@ const sizes = [
   { size: 'medium', name: 'Medium', height: 56 },
   { size: 'large', name: 'Large', height: 96 },
   { size: 'xlarge', name: 'Extra large', height: 136 },
-] as const satisfies { size: ButtonProps['size']; name: string; height: number }[];
+];
 
-const colors = ['primary', 'secondary', 'tertiary', 'error'] as const satisfies ButtonProps['color'][];
+const colors = ['primary', 'secondary', 'tertiary', 'error'];
 
 const icons = { None: undefined, Add: <Add />, Event: <Event />, ArrowForward: <ArrowForward /> };
 
 /** A labelled row in the overview stories. */
-function Row({ title, code, children }: { title: string; code?: string; children: ReactNode }) {
+function Row({ title, code, children }) {
   return (
     <Stack direction="row" spacing={3} sx={{ alignItems: 'center' }}>
       <Stack sx={{ width: 160, flexShrink: 0 }}>
@@ -58,7 +56,7 @@ const meta = {
       description: {
         component: [
           "MUI's `Button`, styled as the **Material 3 Expressive** button by the theme in `src/theme`",
-          '(styles: `src/theme/components/button.ts`). Use it like any MUI button, from `@mui/material/Button`:',
+          '(styles: `src/theme/components/button.js`). Use it like any MUI button, from `@mui/material/Button`:',
           '',
           '```jsx',
           '<Button variant="tonal" size="medium" shape="square" startIcon={<Add />}>Add event</Button>',
@@ -97,16 +95,15 @@ const meta = {
     startIcon: { control: 'select', options: Object.keys(icons), mapping: icons },
     endIcon: { control: 'select', options: Object.keys(icons), mapping: icons },
   },
-} satisfies Meta<typeof Button>;
+};
 
 export default meta;
-type Story = StoryObj<typeof meta>;
 
 /** Try every prop with the controls below. */
-export const Playground: Story = {};
+export const Playground = {};
 
 /** The five M3 button types, with and without an icon, and disabled. */
-export const Types: Story = {
+export const Types = {
   render: (args) => (
     <Stack spacing={3}>
       {types.map(({ variant, name }) => (
@@ -127,7 +124,7 @@ export const Types: Story = {
 };
 
 /** The five M3 Expressive sizes, in both shapes. Press and hold a button to see the corners morph. */
-export const SizesAndShapes: Story = {
+export const SizesAndShapes = {
   render: (args) => (
     <Stack spacing={4}>
       {sizes.map(({ size, name, height }) => (
@@ -143,14 +140,14 @@ export const SizesAndShapes: Story = {
     </Stack>
   ),
   play: async ({ canvasElement }) => {
-    for (const button of canvasElement.querySelectorAll<HTMLElement>('[data-expected-height]')) {
+    for (const button of canvasElement.querySelectorAll('[data-expected-height]')) {
       await expect(button.getBoundingClientRect().height).toBe(Number(button.dataset.expectedHeight));
     }
   },
 };
 
 /** Every type in every color. `primary` is the M3 look; the others swap in that color role. */
-export const Colors: Story = {
+export const Colors = {
   render: (args) => (
     <Stack spacing={3}>
       {colors.map((color) => (
@@ -170,7 +167,7 @@ export const Colors: Story = {
  * The dashed outline shows each button's touch area. Extra-small (32px) and small (40px) buttons
  * have an invisible touch area that reaches the project's minimum of 44×44px.
  */
-export const TouchTargets: Story = {
+export const TouchTargets = {
   render: (args) => (
     <Stack
       spacing={2}
@@ -192,7 +189,7 @@ export const TouchTargets: Story = {
   play: async ({ canvasElement }) => {
     // Hit-test just inside the top and bottom edges of the 44px area: the button must get the tap.
     const reach = minTouchTarget / 2 - 1;
-    for (const button of canvasElement.querySelectorAll<HTMLElement>('.MuiButton-root')) {
+    for (const button of canvasElement.querySelectorAll('.MuiButton-root')) {
       const box = button.getBoundingClientRect();
       const x = box.left + box.width / 2;
       const y = box.top + box.height / 2;

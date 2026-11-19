@@ -40,5 +40,5 @@ Available themes: `light`, `light-medium-contrast`, `light-high-contrast`, `dark
 1. In Tokens Studio, export the tokens as multiple files into the `tokens/` folder (replace what is there).
 2. Run `npm run tokens` and commit the regenerated files. It does not run automatically: the app and Storybook use the committed files in `src/tokens/generated/`.
 
-`scripts/build-tokens.ts` converts `tokens/` into `src/tokens/generated/tokens.css` (the CSS variables) and
-`src/tokens/generated/tokens.ts` (the data behind these pages). Don't edit the generated files by hand.
+`scripts/build-tokens.js` converts `tokens/` into `src/tokens/generated/tokens.css` (the CSS variables) and
+`src/tokens/generated/tokens.js` (the data behind these pages). Don't edit the generated files by hand.

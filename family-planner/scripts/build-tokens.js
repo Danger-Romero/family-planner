@@ -5,7 +5,7 @@
  *   src/tokens/generated/tokens.css  CSS custom properties. The default theme (Light) sits on
  *                                    :root; every other theme only overrides what it changes,
  *                                    under [data-theme="<id>"], e.g. [data-theme="dark"].
- *   src/tokens/generated/tokens.ts   The same tokens as typed data, used by the Storybook docs.
+ *   src/tokens/generated/tokens.js   The same tokens as data, used by the Storybook docs.
  *
  * Which files are read, and in which order, comes from tokens/$metadata.json (Tokens Studio
  * keeps it up to date), so new token sets from Figma are picked up automatically.
@@ -13,7 +13,6 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import StyleDictionary from 'style-dictionary';
-import type { TransformedToken } from 'style-dictionary/types';
 import { expandTypesMap, register } from '@tokens-studio/sd-transforms';
 
 const TOKENS_DIR = 'tokens';
@@ -23,19 +22,17 @@ const THEME_FOLDER = 'material-theme';
 /** The theme that holds every token and is applied on :root. */
 const DEFAULT_THEME = 'Light';
 
-interface Theme {
-  id: string;
-  name: string;
-  selector: string;
-}
+/**
+ * A token as written to tokens.js (the DesignToken type described there).
+ * @typedef {object} TokenData
+ * @property {string[]} path
+ * @property {string} cssVar
+ * @property {string} type
+ * @property {string} value
+ * @property {string} [description]
+ */
 
-interface TokenData {
-  path: string[];
-  cssVar: string;
-  type: string;
-  value: string;
-  description?: string;
-}
+/** @typedef {import('style-dictionary/types').TransformedToken} TransformedToken */
 
 // Tokens Studio writes line heights as plain numbers and means pixels, like Figma does.
 // CSS reads a unitless line-height as a multiplier (64 → 64 × font size), so add the unit.
@@ -48,10 +45,9 @@ StyleDictionary.registerTransform({
 
 await register(StyleDictionary);
 
-const metadata = JSON.parse(await readFile(path.join(TOKENS_DIR, '$metadata.json'), 'utf8')) as {
-  tokenSetOrder: string[];
-};
-const setFile = (set: string) => path.join(TOKENS_DIR, `${set}.json`);
+/** @type {{ tokenSetOrder: string[] }} */
+const metadata = JSON.parse(await readFile(path.join(TOKENS_DIR, '$metadata.json'), 'utf8'));
+const setFile = (set) => path.join(TOKENS_DIR, `${set}.json`);
 const themeSets = metadata.tokenSetOrder.filter((set) => set.startsWith(`${THEME_FOLDER}/`));
 const sharedSets = metadata.tokenSetOrder.filter((set) => !themeSets.includes(set));
 const defaultSet = `${THEME_FOLDER}/${DEFAULT_THEME}`;
@@ -63,8 +59,10 @@ const baseFiles = [...sharedSets, defaultSet].map(setFile);
 /**
  * The default theme returns every token. Any other theme returns only the tokens its own file
  * defines; the base files are still loaded so that its values may reference base tokens.
+ * @param {string} themeSet
+ * @returns {Promise<TransformedToken[]>}
  */
-async function buildTheme(themeSet: string): Promise<TransformedToken[]> {
+async function buildTheme(themeSet) {
   const isDefault = themeSet === defaultSet;
   const sd = new StyleDictionary({
     // Tokens Studio exports the W3C/DTCG format ($value, $type). Say so explicitly: the
@@ -91,19 +89,24 @@ async function buildTheme(themeSet: string): Promise<TransformedToken[]> {
  * Material Theme Builder exports extra tones in each reference palette (Ref / Primary / Primary4,
  * Primary12, Primary99, …). We only keep the tones divisible by 5: 0, 5, 10 … 95, 100.
  * Other tokens with numbers in their name, like the state-layer opacities, are not tones.
+ * @param {TransformedToken} token
  */
-function isKeptTone(token: TransformedToken): boolean {
+function isKeptTone(token) {
   if (token.$type !== 'color' || token.path[1] !== 'ref') return true;
   const tone = token.path.at(-1)?.match(/(\d+)$/)?.[1];
   return tone === undefined || Number(tone) % 5 === 0;
 }
 
-function toData(token: TransformedToken): TokenData {
-  const value: unknown = token.$value;
+/**
+ * @param {TransformedToken} token
+ * @returns {TokenData}
+ */
+function toData(token) {
+  const value = token.$value;
   if (typeof value !== 'string' && typeof value !== 'number') {
     throw new Error(
       `Token "${token.path.join('.')}" (${token.$type}) has no CSS value: ${JSON.stringify(value)}. ` +
-        'Add a transform for this token type in scripts/build-tokens.ts.',
+        'Add a transform for this token type in scripts/build-tokens.js.',
     );
   }
   return {
@@ -115,7 +118,11 @@ function toData(token: TransformedToken): TokenData {
   };
 }
 
-function cssBlock(selector: string, tokens: TokenData[]): string {
+/**
+ * @param {string} selector
+ * @param {TokenData[]} tokens
+ */
+function cssBlock(selector, tokens) {
   const lines = tokens.map((token) => {
     const comment = token.description ? ` /* ${token.description.replaceAll('*/', '* /')} */` : '';
     return `  ${token.cssVar}: ${token.value};${comment}`;
@@ -123,14 +130,15 @@ function cssBlock(selector: string, tokens: TokenData[]): string {
   return `${selector} {\n${lines.join('\n')}\n}\n`;
 }
 
-const themes: (Theme & { tokens: TokenData[] })[] = [];
+/** @type {{ id: string, name: string, selector: string, tokens: TokenData[] }[]} */
+const themes = [];
 for (const set of themeSets) {
   const name = set.slice(THEME_FOLDER.length + 1);
   const id = name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
   const selector = set === defaultSet ? `:root,\n[data-theme="${id}"]` : `[data-theme="${id}"]`;
   themes.push({ id, name, selector, tokens: (await buildTheme(set)).filter(isKeptTone).map(toData) });
 }
-const defaultTheme = themes.find((theme) => theme.name === DEFAULT_THEME)!;
+const defaultTheme = themes.find((theme) => theme.name === DEFAULT_THEME);
 // Default theme first in the CSS, so the other themes' rules win when both match.
 const orderedThemes = [defaultTheme, ...themes.filter((theme) => theme !== defaultTheme)];
 
@@ -145,54 +153,57 @@ const themeValues = Object.fromEntries(
   }),
 );
 
-const header = (comment: string) =>
-  `${comment} Generated by scripts/build-tokens.ts from the Tokens Studio export in /tokens.\n` +
+const header = (comment) =>
+  `${comment} Generated by scripts/build-tokens.js from the Tokens Studio export in /tokens.\n` +
   `${comment} Do not edit by hand. Run \`npm run tokens\` instead.\n`;
 
 const css =
   `/*\n${header(' *')} */\n\n` + orderedThemes.map((theme) => cssBlock(theme.selector, theme.tokens)).join('\n');
 
-const ts = `${header('//')}
-export interface DesignToken {
-  /** Token path as named in Tokens Studio / Figma, e.g. ["Schemes", "On Primary"]. */
-  path: string[];
-  /** CSS custom property defined in tokens.css, e.g. "--schemes-on-primary". */
-  cssVar: string;
-  /** Token type, e.g. "color", "shadow", "fontSize", "lineHeight". */
-  type: string;
-  /** Value in the default theme, ready to use in CSS. */
-  value: string;
-  description?: string;
-}
+const js = `${header('//')}
+/**
+ * @typedef {object} DesignToken
+ * @property {string[]} path Token path as named in Tokens Studio / Figma, e.g. ["Schemes", "On Primary"].
+ * @property {string} cssVar CSS custom property defined in tokens.css, e.g. "--schemes-on-primary".
+ * @property {string} type Token type, e.g. "color", "shadow", "fontSize", "lineHeight".
+ * @property {string} value Value in the default theme, ready to use in CSS.
+ * @property {string} [description]
+ */
 
-export interface Theme {
-  /** Value for the data-theme attribute, e.g. <html data-theme="dark">. */
-  id: string;
-  /** Name of the token set in Tokens Studio. */
-  name: string;
-}
+/**
+ * @typedef {object} Theme
+ * @property {string} id Value for the data-theme attribute, e.g. <html data-theme="dark">.
+ * @property {string} name Name of the token set in Tokens Studio.
+ */
 
 export const defaultThemeId = ${JSON.stringify(defaultTheme.id)};
 
-export const themes: Theme[] = ${JSON.stringify(
+/** @type {Theme[]} */
+export const themes = ${JSON.stringify(
   orderedThemes.map(({ id, name }) => ({ id, name })),
   null,
   2,
 )};
 
-/** Every token, with its value in the default theme. */
-export const tokens: DesignToken[] = [
+/**
+ * Every token, with its value in the default theme.
+ * @type {DesignToken[]}
+ */
+export const tokens = [
 ${defaultTheme.tokens.map((token) => `  ${JSON.stringify(token)},`).join('\n')}
 ];
 
-/** Tokens that change between themes: themeValues[themeId][cssVar] → value. */
-export const themeValues: Record<string, Record<string, string>> = ${JSON.stringify(themeValues, null, 2)};
+/**
+ * Tokens that change between themes: themeValues[themeId][cssVar] → value.
+ * @type {Record<string, Record<string, string>>}
+ */
+export const themeValues = ${JSON.stringify(themeValues, null, 2)};
 `;
 
 await mkdir(OUT_DIR, { recursive: true });
 await writeFile(path.join(OUT_DIR, 'tokens.css'), css);
-await writeFile(path.join(OUT_DIR, 'tokens.ts'), ts);
+await writeFile(path.join(OUT_DIR, 'tokens.js'), js);
 
 console.log(
-  `✔ ${defaultTheme.tokens.length} tokens, ${themes.length} themes (${themedVars.size} tokens vary per theme) → ${OUT_DIR}/tokens.{css,ts}`,
+  `✔ ${defaultTheme.tokens.length} tokens, ${themes.length} themes (${themedVars.size} tokens vary per theme) → ${OUT_DIR}/tokens.{css,js}`,
 );

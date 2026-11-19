@@ -4,11 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "tokens": "node scripts/build-tokens.ts",
+    "tokens": "node scripts/build-tokens.js",
     "dev": "vite",
     "build": "vite build",
     "lint": "oxlint",
-    "typecheck": "tsc",
     "test": "node --test tests/*.test.js",
     "preview": "vite preview",
     "storybook": "storybook dev -p 6006",
@@ -45,7 +44,6 @@
     "prop-types": "latest",
     "storybook": "^10.6.6",
     "style-dictionary": "^5.8.0",
-    "typescript": "^7.0.2",
     "vite": "^8.3.6",
     "vitest": "latest"
   }

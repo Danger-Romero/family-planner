@@ -2,16 +2,17 @@
  * Building blocks for the "Design Tokens" pages in Storybook (the *.mdx files next to this one).
  *
  * Everything is drawn with the CSS variables from tokens.css — swatches use var(--…), not the
- * hex value — so the pages show what the app actually gets. The text values come from tokens.ts.
+ * hex value — so the pages show what the app actually gets. The text values come from tokens.js.
  */
-import { useState, type CSSProperties } from 'react';
-import { defaultThemeId, themes, themeValues, tokens, type DesignToken } from '../generated/tokens.ts';
+import { useState } from 'react';
+import { defaultThemeId, themes, themeValues, tokens } from '../generated/tokens.js';
 import './TokenDocs.css';
 
-const startsWith = (token: DesignToken, prefix: string[]) => prefix.every((segment, i) => token.path[i] === segment);
+const startsWith = (token, prefix) => prefix.every((segment, i) => token.path[i] === segment);
 
-function groupBy<T>(items: T[], key: (item: T) => string): Map<string, T[]> {
-  const groups = new Map<string, T[]>();
+/** Groups `items` into a Map by the key `key(item)` gives each one, keeping their order. */
+function groupBy(items, key) {
+  const groups = new Map();
   for (const item of items) {
     const k = key(item);
     groups.set(k, [...(groups.get(k) ?? []), item]);
@@ -61,8 +62,8 @@ export function ColorSchemes() {
 }
 
 /** Tonal palettes: one row per palette under `prefix`, tones sorted from 0 (black) to 100 (white). */
-export function TonalPalettes({ prefix }: { prefix: string[] }) {
-  const tone = (token: DesignToken) => Number(token.path.at(-1)?.match(/\d+$/)?.[0] ?? 0);
+export function TonalPalettes({ prefix }) {
+  const tone = (token) => Number(token.path.at(-1)?.match(/\d+$/)?.[0] ?? 0);
   const palettes = groupBy(
     tokens.filter((token) => token.type === 'color' && startsWith(token, prefix)),
     (token) => token.path[prefix.length],
@@ -92,8 +93,9 @@ export function TonalPalettes({ prefix }: { prefix: string[] }) {
   );
 }
 
-// Typography styles are split into one token per property by the build (see scripts/build-tokens.ts).
-const typographyProperties: Record<string, keyof CSSProperties> = {
+// Typography styles are split into one token per property by the build (see scripts/build-tokens.js).
+// Token name → the CSS property (as a React style key) it sets.
+const typographyProperties = {
   fontFamily: 'fontFamily',
   fontWeight: 'fontWeight',
   fontSize: 'fontSize',
@@ -105,9 +107,9 @@ const typographyProperties: Record<string, keyof CSSProperties> = {
 };
 
 /** Every typography style (a group of fontFamily/fontSize/… tokens), rendered with its own variables. */
-export function TypeScale({ sample = 'Family dinner at 18:00 — remember the groceries' }: { sample?: string }) {
-  const isStyleProperty = (token: DesignToken) =>
-    token.path.length > 1 && (token.path.at(-1)! in typographyProperties || token.path.at(-1) === 'paragraphSpacing');
+export function TypeScale({ sample = 'Family dinner at 18:00 — remember the groceries' }) {
+  const isStyleProperty = (token) =>
+    token.path.length > 1 && (token.path.at(-1) in typographyProperties || token.path.at(-1) === 'paragraphSpacing');
   const styles = [...groupBy(tokens.filter(isStyleProperty), (token) => token.path.slice(0, -1).join('/'))].filter(
     ([, props]) => props.some((p) => p.path.at(-1) === 'fontSize') && props.some((p) => p.path.at(-1) === 'fontFamily'),
   );
@@ -125,13 +127,13 @@ export function TypeScale({ sample = 'Family dinner at 18:00 — remember the gr
           </thead>
           <tbody>
             {styles.map(([key, props]) => {
-              const prop = (name: string) => props.find((p) => p.path.at(-1) === name);
-              const style: CSSProperties = {};
+              const prop = (name) => props.find((p) => p.path.at(-1) === name);
+              const style = {};
               for (const p of props) {
-                const cssProperty = typographyProperties[p.path.at(-1)!];
-                if (cssProperty) Object.assign(style, { [cssProperty]: `var(${p.cssVar})` });
+                const cssProperty = typographyProperties[p.path.at(-1)];
+                if (cssProperty) style[cssProperty] = `var(${p.cssVar})`;
               }
-              const varPrefix = prop('fontSize')!.cssVar.replace(/font-size$/, '');
+              const varPrefix = prop('fontSize').cssVar.replace(/font-size$/, '');
               return (
                 <tr key={key}>
                   <th scope="row">
@@ -161,7 +163,7 @@ export function TypeScale({ sample = 'Family dinner at 18:00 — remember the gr
 }
 
 /** Shadow tokens under `prefix`, each on a card. Pass `theme` to show them on that theme's surface. */
-export function Elevation({ prefix, theme }: { prefix: string[]; theme?: string }) {
+export function Elevation({ prefix, theme }) {
   const shadows = tokens.filter((token) => token.type === 'shadow' && startsWith(token, prefix));
   return (
     <div className="td sb-unstyled">
@@ -177,7 +179,7 @@ export function Elevation({ prefix, theme }: { prefix: string[]; theme?: string 
   );
 }
 
-function Preview({ token }: { token: DesignToken }) {
+function Preview({ token }) {
   if (token.type === 'color') return <span className="td-swatch" style={{ background: `var(${token.cssVar})` }} />;
   if (token.type === 'shadow') return <span className="td-swatch td-shadow" style={{ boxShadow: `var(${token.cssVar})` }} />;
   return null;

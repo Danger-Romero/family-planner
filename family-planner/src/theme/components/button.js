@@ -10,13 +10,12 @@
  * | Text           | `text`        |
  *
  * `size` is one of the five M3 Expressive sizes, `xsmall` to `xlarge` (default `small`, as in M3),
- * and `shape` is `round` (default) or `square`.
+ * and `shape` is `round` (a pill, the default) or `square` (rounded corners).
  *
  * With the default `color` (primary) each type looks exactly like the M3 spec. `secondary`,
- * `tertiary` and `error` swap in that color role instead.
+ * `tertiary` and `error` swap in that color role instead. (`success`, `info` and `warning` are
+ * not color roles in M3, or in our Figma tokens, so they get no M3 styles.)
  */
-import type { ButtonProps } from '@mui/material/Button';
-import type { Components, Theme } from '@mui/material/styles';
 import {
   corner,
   elevation,
@@ -27,56 +26,28 @@ import {
   transition,
   typescale,
   withOpacity,
-  type TypeRole,
 } from '../m3';
 
-declare module '@mui/material/Button' {
-  interface ButtonPropsVariantOverrides {
-    tonal: true;
-    elevated: true;
-  }
-  interface ButtonPropsSizeOverrides {
-    xsmall: true;
-    xlarge: true;
-  }
-  interface ButtonPropsColorOverrides {
-    tertiary: true;
-    // Not color roles in M3 (or in our Figma tokens).
-    success: false;
-    info: false;
-    warning: false;
-  }
-  interface ButtonOwnProps {
-    /** M3 Expressive shape: `round` (a pill, the default) or `square` (rounded corners). */
-    shape?: 'round' | 'square';
-  }
-}
-
-type Size = NonNullable<ButtonProps['size']>;
-type Variant = NonNullable<ButtonProps['variant']>;
-type Color = Exclude<NonNullable<ButtonProps['color']>, 'inherit'>;
-
-const px = (value: number) => `${value}px`;
+const px = (value) => `${value}px`;
 
 // ---------------------------------------------------------------------------------------------
 // Sizes (ButtonXSmallTokens … ButtonXLargeTokens)
 
-interface SizeSpec {
-  height: number;
-  /** Space between the container's edge and the label or icon, on both sides. */
-  padding: number;
-  iconSize: number;
-  iconGap: number;
-  type: TypeRole;
-  /** Corner radius of the square shape. */
-  square: number;
-  /** Corner radius while pressed, for both shapes. */
-  pressed: number;
-  outlineWidth: number;
-}
+/**
+ * @typedef {object} SizeSpec
+ * @property {number} height
+ * @property {number} padding Space between the container's edge and the label or icon, on both sides.
+ * @property {number} iconSize
+ * @property {number} iconGap
+ * @property {string} type A role of the M3 type scale (`typeRoles` in m3.js).
+ * @property {number} square Corner radius of the square shape.
+ * @property {number} pressed Corner radius while pressed, for both shapes.
+ * @property {number} outlineWidth
+ */
 
 // Extra small uses Compose's values (12px padding, 4px icon gap): its token file is known to be off.
-const sizes: Record<Size, SizeSpec> = {
+/** @type {Record<string, SizeSpec>} */
+const sizes = {
   xsmall: { height: 32, padding: 12, iconSize: 20, iconGap: 4, type: 'label-large', square: corner.medium, pressed: corner.small, outlineWidth: 1 },
   small: { height: 40, padding: 16, iconSize: 20, iconGap: 8, type: 'label-large', square: corner.medium, pressed: corner.small, outlineWidth: 1 },
   medium: { height: 56, padding: 24, iconSize: 24, iconGap: 8, type: 'title-medium', square: corner.large, pressed: corner.medium, outlineWidth: 1 },
@@ -87,20 +58,27 @@ const sizes: Record<Size, SizeSpec> = {
 // ---------------------------------------------------------------------------------------------
 // Types and colors (FilledButtonTokens, FilledTonalButtonTokens, ElevatedButtonTokens, …)
 
-interface VariantSpec {
-  container: string;
-  label: string;
-  outline?: string;
-  elevation?: 0 | 1 | 2;
-  hoverElevation?: 0 | 1 | 2;
-  disabledContainer: string;
-  disabledLabel: string;
-}
+/**
+ * @typedef {object} VariantSpec
+ * @property {string} container
+ * @property {string} label
+ * @property {string} [outline]
+ * @property {0 | 1 | 2} [elevation]
+ * @property {0 | 1 | 2} [hoverElevation]
+ * @property {string} disabledContainer
+ * @property {string} disabledLabel
+ */
 
-const onSurface = (opacity: number) => withOpacity(scheme('on-surface'), opacity);
-const onSurfaceVariant = (opacity: number) => withOpacity(scheme('on-surface-variant'), opacity);
+const onSurface = (opacity) => withOpacity(scheme('on-surface'), opacity);
+const onSurfaceVariant = (opacity) => withOpacity(scheme('on-surface-variant'), opacity);
 
-function variantSpec(variant: Variant, color: Color): VariantSpec {
+/**
+ * The colors of one button type (`variant`) in one `color`.
+ * @param {string} variant
+ * @param {string} color
+ * @returns {VariantSpec}
+ */
+function variantSpec(variant, color) {
   switch (variant) {
     case 'contained':
       return {
@@ -151,8 +129,8 @@ function variantSpec(variant: Variant, color: Color): VariantSpec {
   }
 }
 
-const variants: Variant[] = ['contained', 'tonal', 'elevated', 'outlined', 'text'];
-const colors: Color[] = ['primary', 'secondary', 'tertiary', 'error'];
+const variants = ['contained', 'tonal', 'elevated', 'outlined', 'text'];
+const colors = ['primary', 'secondary', 'tertiary', 'error'];
 
 // ---------------------------------------------------------------------------------------------
 // Styles
@@ -167,8 +145,9 @@ const label = 'var(--m3-button-label-color)';
 const container = 'var(--m3-button-container)';
 // The state layer: the label color laid over the container at --m3-button-state.
 const background = `color-mix(in srgb, ${label} var(--m3-button-state), ${container})`;
-const percent = (opacity: number) => `${opacity * 100}%`;
+const percent = (opacity) => `${opacity * 100}%`;
 
+/** The `MuiButton` entry of the theme's `components` (see theme.js). */
 export const buttonOverrides = {
   defaultProps: {
     size: 'small',
@@ -234,7 +213,7 @@ export const buttonOverrides = {
         outline: `3px solid ${scheme('secondary')}`,
         outlineOffset: 2,
       },
-      // Pressed: the corners tighten (shape morph). The press color is the ripple, see theme.ts.
+      // Pressed: the corners tighten (shape morph). The press color is the ripple, see theme.js.
       '&:active': {
         '--m3-button-shape': 'var(--m3-button-shape-pressed)',
         boxShadow: 'var(--m3-button-elevation)',
@@ -248,7 +227,7 @@ export const buttonOverrides = {
 
       variants: [
         ...Object.entries(sizes).map(([size, spec]) => ({
-          props: { size: size as Size },
+          props: { size },
           style: {
             '--m3-button-height': px(spec.height),
             '--m3-button-padding': px(spec.padding),
@@ -262,7 +241,7 @@ export const buttonOverrides = {
           },
         })),
         {
-          props: { shape: 'square' as const },
+          props: { shape: 'square' },
           style: { '--m3-button-shape': 'var(--m3-button-shape-square)' },
         },
         ...variants.flatMap((variant) =>
@@ -290,4 +269,4 @@ export const buttonOverrides = {
       ],
     },
   },
-} satisfies Components<Theme>['MuiButton'];
+};
