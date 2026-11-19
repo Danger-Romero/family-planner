@@ -1,3 +1,4 @@
+import { MemoryRouter } from 'react-router-dom';
 import { expect } from 'storybook/test';
 import App from './App';
 
@@ -7,6 +8,8 @@ const meta = {
   parameters: {
     layout: 'fullscreen',
   },
+  // App uses the router (as in src/main.jsx), so it needs one around it.
+  decorators: [(Story) => <MemoryRouter><Story /></MemoryRouter>],
 };
 
 export default meta;
