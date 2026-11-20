@@ -87,12 +87,16 @@ export async function addMember({ name, memberType, username = "", birthDate = "
     try {
       const savedFamily = await new Parse.Query(Family).get(family.id);
       const items = await new Parse.Query(Item).equalTo("family", family).findAll();
+      const assignments = items.length
+        ? await new Parse.Query("Assignment").containedIn("item", items).findAll()
+        : [];
       const people = members.map(toMember);
       savedFamily.setACL(createFamilyACL(people));
       members.forEach((each) => each.setACL(createFamilyACL(people)));
       items.forEach((item) => item.setACL(createFamilyACL(people, true)));
+      assignments.forEach((assignment) => assignment.setACL(createFamilyACL(people, true)));
       // Like shareList in the course examples, this is several saves, not a transaction.
-      await Parse.Object.saveAll([savedFamily, ...members, ...items]);
+      await Parse.Object.saveAll([savedFamily, ...members, ...items, ...assignments]);
     } catch (error) {
       throw new Error("The member exists, but sharing could not be updated. Add the same username again to retry.", { cause: error });
     }

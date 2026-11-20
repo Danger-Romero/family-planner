@@ -2,7 +2,8 @@
 
 A React and JavaScript app built with Vite, using Parse/Back4App for accounts
 and shared data. Adults can manage family members, and linked accounts can
-create tasks and events, complete tasks, and view the family overview.
+create tasks and events, assign responsible and attending members, complete
+tasks, and view the family overview.
 
 The group uses **one shared Back4App app**. Each member runs the frontend
 locally and connects to that same backend. The [database setup](#shared-database-setup-once-per-group)
@@ -62,10 +63,12 @@ server URL before starting.
    member type, and exact signup username. Choose **adult** for group members
    who need to manage members. Add accounts one at a time.
 4. Each added person refreshes the page to load the shared family.
-5. On **Items**, add a task with an optional due date, or an event with a
-   required start and optional end. Tasks can be marked complete; both kinds
-   can be deleted. **Overview** shows unfinished tasks and upcoming or ongoing
-   events.
+5. On **Today**, choose **Manage items**. Add a task with an optional due date,
+   or an event with a required start and optional end. Select members under
+   **Responsible** and **Attending**. Use **Edit assignments** to change them
+   later. Tasks can be marked complete; both kinds can be deleted.
+6. **Today** shows unfinished tasks and upcoming or ongoing events, including
+   the names assigned to each role. Log out from **Family** to switch accounts.
 
 To add a person without a login, leave the username blank on the Family form.
 This creates a member record without creating an account. Linking a login to
@@ -75,12 +78,42 @@ Each account can belong to one family. Changes from other people appear when
 you refresh or revisit a page; the app has no live subscriptions. Date/time
 inputs use your browser's local time.
 
-## Shared database setup 
+### Responsible and attending
+
+An item can have several responsible members and several attending members.
+The same member can have both roles. Members without accounts can be assigned,
+and assignments are optional; existing items start unassigned.
+
+Each member/role pair is a separate `Assignment` record pointing to an `Item`
+and a `Member`. The [ER diagram](docs/er-diagram.mmd) shows these relationships.
+`Item.createdBy` still identifies the creator. Assignment roles describe who is
+responsible or attending; they do not change account permissions.
+
+### If saving or deleting fails
+
+The item is saved before its assignments. If assignment creation fails, the
+saved item stays in the list and the creation form resets. Use **Edit
+assignments** on that item to finish; creating it again would make another item.
+
+Editing saves new pairs before deleting deselected pairs and keeps unchanged
+records. A failed edit keeps your selections in the open form and tries to
+reload the stored assignments. Retry **Save assignments** to finish the change.
+Each retry reads the stored pairs again, so successful parts are reused. A
+duplicate-value error triggers one automatic retry. Other failures are shown
+for a manual retry. These saves are several requests, not one transaction.
+
+Deleting an item deletes its assignments first. A failure can leave the item
+with fewer assignments, so the page reloads the stored data before another
+attempt. Follow any refresh instruction if that reload also fails. This cleanup
+runs in the app; deleting an Item directly in the dashboard does not run it.
+
+## Shared database setup (once per group)
 
 ### 1. Classes and fields
 
-Created `Family`, `Member`, and `Item` in Protected mode, then applied the
-permissions below. Names are case-sensitive. Parse automatically adds
+Create `Family`, `Member`, `Item`, and `Assignment` in Protected mode, then apply
+the permissions below. If a class already exists, check its fields and settings.
+Names are case-sensitive. Parse automatically adds
 `objectId`, `createdAt`, `updatedAt`, and `ACL`.
 
 | Class | Field | Type / purpose |
@@ -103,13 +136,18 @@ permissions below. Names are case-sensitive. Parse automatically adds
 | Item | `manuallyUrgent` | Boolean; initially `false` |
 | Item | `completed` | Boolean; initially `false` |
 | Item | `visibility` | String; currently `everyone` |
+| Assignment | `item` | Pointer → Item |
+| Assignment | `member` | Pointer → Member |
+| Assignment | `role` | String: `responsible` or `attending` |
 
 Every listed field is created before using the app, because client requests will
 not be allowed to add columns. Authentication uses the built-in `_User` class.
-The other classes in the [planned ER diagram](docs/er-diagram.mmd) are for
-future features and are not required for setup.
+The remaining classes in the [ER diagram](docs/er-diagram.mmd) are for future
+features and are not required for setup. See the official
+[Back4App Database Browser guide](https://www.back4app.com/docs/parse-dashboard/core/database-browser)
+for class, column, security, and index controls.
 
-### 2. Add the membership index
+### 2. Add the indexes
 
 In Back4App's **Database → Index Manager**, create a **unique, sparse index
 on `Member.user`**, or ask the database administrator to create it.
@@ -122,9 +160,28 @@ The MongoDB field for this Parse pointer is `_p_user`; the dashboard may show
 the logical name `user`. Verify that both Unique and Sparse are enabled.
 Existing duplicate account links must be resolved before creating the index.
 
+For `Assignment`, create a **unique compound index** on `item`, `member`, and
+`role`, with all three fields ascending. A suggested name is
+`unique_item_member_role`. For a MongoDB-backed Parse app, the index keys are:
+
+```json
+{ "_p_item": 1, "_p_member": 1, "role": 1 }
+```
+
+Set **Unique** to true and leave **Sparse** off. This prevents duplicate pairs
+for the same item while allowing one member to have both roles. A normal
+non-unique index does not provide that protection. Remove existing duplicate
+triples before creating the index. If Index Manager does not offer the required
+unique options, ask the app's administrator or Back4App support to create it.
+
+Parse documents the `_p_` names for
+[pointer indexes](https://docs.parseplatform.org/defined-schema/guide/#indexes).
+MongoDB documents [compound unique indexes](https://www.mongodb.com/docs/manual/core/index-unique/)
+and why existing duplicates must be resolved first.
+
 ### 3. Configure class-level permissions (CLPs)
 
-For the three planner classes, allow the following operations for
+For the four planner classes, allow the following operations for
 **authenticated users only**. Disable public access and client **Add Field**.
 
 | Class | Authenticated operations |
@@ -132,6 +189,7 @@ For the three planner classes, allow the following operations for
 | Family | Find, Get, Create, Update, Delete |
 | Member | Find, Get, Create, Update, Delete |
 | Item | Find, Get, Create, Update, Delete |
+| Assignment | Find, Get, Create, Update, Delete |
 
 For `_User`, use these permissions:
 
@@ -156,21 +214,53 @@ The services assign record access control lists (ACLs) automatically:
 | Records | Read access | Write access |
 | --- | --- | --- |
 | Family and Member | All linked family accounts | Linked adult accounts |
-| Item | All linked family accounts | All linked family accounts |
+| Item and Assignment | All linked family accounts | All linked family accounts |
 
-Members without accounts have no login or ACL entry. Adding a linked account
-updates access on the family's existing records.
+Members without accounts have no login or ACL entry, but they can still be
+assigned. Adding a linked account updates access on the family's existing
+Family, Member, Item, and Assignment records. If sharing fails, adding the same
+username again repairs access without creating another Member.
 
 Try the signup and sharing steps above with two separate accounts. Confirm
 that the second adult can see existing items and add members. A linked child
-can read and update items, but has no write access to Family or Member records.
+can read and update items and assignments, but has no write access to existing
+Family or Member records.
 An unrelated account should not be able to access the family's records.
 
-Back4App enforces CLPs, ACLs, and the unique index. Adult-only member creation,
-date validation, and checks on family/creator fields are implemented in browser
-services and can be bypassed through direct API requests. This starter does
-not enforce those rules on the server. Only `everyone` item visibility is
-currently implemented.
+Back4App enforces the configured CLPs, ACLs, and unique indexes. Adult-only
+member creation, date validation, allowed assignment roles, and checks that an
+item, creator, and assigned members belong to the selected family are implemented
+in browser services. Direct API requests can bypass these service checks. A
+String column does not enforce allowed role values. Use server-side validation
+if those rules must be enforced against direct requests. Only `everyone` item
+visibility is currently implemented.
+
+### 5. Verify against the shared Back4App app
+
+Run these checks with your group's accounts after configuring the database:
+
+1. Create a task and an event. Select several members in each role, including a
+   member without an account. Give one member both roles. Refresh and confirm
+   that **Manage items** and **Today** show the names under the correct labels.
+2. Inspect `Assignment` in the dashboard. Each selected item/member/role triple
+   should have one record. A member with both roles should have two records.
+   Confirm the unique index exists; repeated saves should keep the same IDs for
+   unchanged pairs.
+3. Edit assignments: add a member, remove a member, then clear both groups.
+   Refresh after each save and confirm the stored rows match the selections.
+4. Add a new linked adult and child after assignments exist. In separate browser
+   sessions, confirm both accounts can read the existing assignments and edit
+   them. Confirm the adult can add members. Check the child has no write ACL
+   on existing Family or Member records.
+5. With an unrelated account's normal session, try reading and writing known
+   Family, Item, and Assignment IDs through the SDK/API. Reads must return no
+   accessible record and writes must fail. Dashboard administrator access does
+   not test the permissions of an ordinary account.
+6. Delete an assigned item through the app. Refresh and check the dashboard:
+   the Item and its Assignment records should be gone.
+
+Partial saves, retries, and cleanup failures are also covered by the automated
+tests below. Those tests replace the network; they do not verify hosted settings.
 
 ## Development commands
 
@@ -184,8 +274,11 @@ Run these from `family-planner/`:
 | `npm run build` | Create a production build in `dist/` |
 | `npm run preview` | Preview the production build after building |
 
-The automated tests do not configure or verify the hosted database index,
-ACLs, or CLPs. Check sharing against the shared Back4App app as described above.
+The automated tests use the actual Parse SDK with mocked network responses.
+They cover assignment validation, both roles, members without accounts,
+pagination, partial-save retries, deletion order, and sharing ACL requests.
+They do not configure or verify hosted indexes, ACL enforcement, CLPs, or the
+browser interface. Run the live checks above separately.
 
 ## Project structure
 
@@ -193,8 +286,8 @@ ACLs, or CLPs. Check sharing against the shared Back4App app as described above.
 src/
   App.jsx       # Login session, current member/family, and routes
   pages/        # Auth, Family, Items, Overview, and Setup pages
-  components/   # Family/member forms and task/event forms and list entries
-  services/     # Parse connection, accounts, families, members, items, and ACLs
+  components/   # Family/member forms, item entries, and assignment forms/fields
+  services/     # Parse connection, accounts, families, members, items, assignments, ACLs
 tests/          # Service tests and Parse persistence mock
 docs/           # Planned ER diagram
 ```
@@ -217,6 +310,9 @@ dividing work between group members.
 | Signup says sharing permissions could not be saved | The account was created. Check `_User` Update permissions, then use **Log in** with that account. |
 | A username cannot be found | The person must sign up first. Check the exact username, `_User` Find/Get permissions, and the account's read ACL. |
 | An added account cannot see the family | Refresh its page. If sharing failed, an adult can add the same username again to repair access without creating another member. |
+| Assignments fail to load or save | Check the case-sensitive `Assignment` class and its pointer types, authenticated CLPs, record ACLs, and unique compound index. |
+| An item was created but its assignments failed | Use **Edit assignments** on the saved item and retry. Do not create the item again. |
+| A newly linked account cannot see old assignments | An adult can add the same username again to repair sharing, then refresh the other account's page. |
 | An account already belongs to a family | Each account can only have one member record. Use an unlinked account, or refresh if it was just added to this family. |
 | Family creation reports unconfirmed membership | Refresh before retrying; the member may already have been saved. Check the database permissions if the error continues. |
 | Login survives a server restart | Parse stores the session in browser localStorage. Log out before resetting test data; restarting Vite does not clear the session. |

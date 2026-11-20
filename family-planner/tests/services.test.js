@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { Parse, session, timestamp, pointer, saved, familyRow, memberRow } from "./parseMock.js";
+import { Parse, session, timestamp, pointer, saved, familyRow, memberRow, itemRow, assignmentRow } from "./parseMock.js";
 import { currentUser, signUp, logIn, logOut } from "../src/services/authService.js";
 import { createFamily, loadFamily } from "../src/services/familyService.js";
 import { loadCurrentMember, loadMembers, addMember } from "../src/services/memberService.js";
@@ -42,14 +42,15 @@ function accountReply(api, username = "Bob", objectId = "bob") {
 
 const ownerACL = { owner: { read: true, write: true } };
 
-function sharingReplies(api, memberType, memberId = "bobMember", failureCode = null) {
+function sharingReplies(api, memberType, memberId = "bobMember", failureCode = null, failurePath = "/parse/classes/Member/member1") {
   familyReply(api);
   api.reply("GET", "classes/Item", (body) => {
     assert.deepEqual(body.where.family, pointer("Family", "family1"));
-    return { results: [{
-      objectId: "item1", title: "Milk", kind: "task", createdAt: timestamp,
-      family: pointer("Family", "family1"), ACL: ownerACL,
-    }] };
+    return { results: [itemRow()] };
+  });
+  api.reply("GET", "classes/Assignment", (body) => {
+    assert.deepEqual(body.where.item, { $in: [pointer("Item", "item1")] });
+    return { results: [assignmentRow()] };
   });
   api.reply("POST", "batch", (body) => {
     assert.equal(body.transaction, undefined);
@@ -58,18 +59,19 @@ function sharingReplies(api, memberType, memberId = "bobMember", failureCode = n
     const expectedPaths = [
       "/parse/classes/Family/family1", "/parse/classes/Member/member1",
       "/parse/classes/Member/" + memberId, "/parse/classes/Item/item1",
+      "/parse/classes/Assignment/assignment1",
     ];
     assert.deepEqual([...byPath.keys()].sort(), expectedPaths.sort());
     for (const path of expectedPaths) {
       const request = byPath.get(path);
       assert.equal(request.method, "PUT");
-      const expectedACL = path.includes("/Item/")
+      const expectedACL = path.includes("/Item/") || path.includes("/Assignment/")
         ? { ...ownerACL, bob: { read: true, write: true } }
         : familyACL;
       assert.deepEqual(request.body.ACL, expectedACL);
     }
-    return body.requests.map((request, index) => failureCode && index === 1
-      ? { error: { code: failureCode, error: "Member ACL update denied" } }
+    return body.requests.map((request) => failureCode && request.path === failurePath
+      ? { error: { code: failureCode, error: "Sharing ACL update denied" } }
       : { success: { updatedAt: timestamp } });
   });
 }
@@ -168,7 +170,7 @@ test("an adult can save a child without an account or a user ACL entry", async (
   });
 });
 
-test("linked adults manage family records and linked children can write Items", async (t) => {
+test("linked adults manage family records and linked children can write Items and Assignments", async (t) => {
   for (const memberType of ["adult", "child"]) {
     await t.test(memberType, async (t) => {
       const api = session(t);
@@ -245,6 +247,48 @@ test("retrying a linked account repairs all sharing without changing its name or
   assert.equal(result.name, "Original");
   assert.equal(result.memberType, "child");
   assert.ok(api.calls.every((call) => call.path !== "classes/Member" || call.method === "GET"));
+});
+
+test("an Assignment ACL failure can be repaired by adding the same username again", async (t) => {
+  const api = session(t);
+  currentMemberReply(api);
+  accountReply(api);
+  familyMembersReply(api);
+  api.reply("POST", "classes/Member", saved("bobMember"));
+  sharingReplies(api, "child", "bobMember", Parse.Error.OPERATION_FORBIDDEN, "/parse/classes/Assignment/assignment1");
+  const values = { name: "Bob", memberType: "child", username: "Bob" };
+  await assert.rejects(addMember(values), (error) => {
+    assert.match(error.message, /same username.*retry/i);
+    assert.equal(error.cause.code, Parse.Error.OPERATION_FORBIDDEN);
+    return true;
+  });
+
+  currentMemberReply(api);
+  accountReply(api);
+  familyMembersReply(api, [memberRow(), {
+    ...memberRow("child", "bobMember"), name: "Bob", user: pointer("_User", "bob"),
+  }]);
+  sharingReplies(api, "child");
+  assert.equal((await addMember(values)).id, "bobMember");
+  assert.equal(api.calls.filter((call) => call.method === "POST" && call.path === "classes/Member").length, 1);
+});
+
+test("sharing a family without Items skips the Assignment lookup", async (t) => {
+  const api = session(t);
+  currentMemberReply(api);
+  accountReply(api);
+  familyMembersReply(api);
+  api.reply("POST", "classes/Member", saved("bobMember"));
+  familyReply(api);
+  api.reply("GET", "classes/Item", { results: [] });
+  api.reply("POST", "batch", (body) => {
+    assert.deepEqual(body.requests.map((request) => request.path).sort(), [
+      "/parse/classes/Family/family1", "/parse/classes/Member/bobMember", "/parse/classes/Member/member1",
+    ]);
+    return body.requests.map(() => ({ success: { updatedAt: timestamp } }));
+  });
+  assert.equal((await addMember({ name: "Bob", memberType: "adult", username: "Bob" })).id, "bobMember");
+  assert.ok(api.calls.every((call) => call.path !== "classes/Assignment"));
 });
 
 test("duplicate account membership rejects an invitation without granting sharing", async (t) => {
@@ -442,6 +486,10 @@ test("write failures propagate and completion changes only Item.completed", asyn
     throw failure;
   });
   await assert.rejects(setItemCompleted("item1", true), (error) => error === failure);
+  api.reply("GET", "classes/Assignment", (body) => {
+    assert.deepEqual(body.where.item, pointer("Item", "item2"));
+    return { results: [] };
+  });
   api.reply("DELETE", "classes/Item/item2", () => { throw failure; });
   await assert.rejects(deleteItem("item2"), (error) => error === failure);
   familyMembersReply(api);

@@ -154,8 +154,18 @@ export default function ItemsPage({ family, member }) {
     try {
       await deleteItem(id);
       setItems((currentItems) => currentItems.filter((item) => item.id !== id));
+      setAssignments((current) => current.filter((assignment) => assignment.item !== id));
     } catch (error) {
       setError(error.message || "Could not delete the item.");
+
+      try {
+        const loadedItems = await loadItems(family);
+        const loadedAssignments = await loadAssignments(loadedItems);
+        setItems(loadedItems);
+        setAssignments(loadedAssignments);
+      } catch {
+        setError("The deletion could not be confirmed. Refresh before trying again.");
+      }
     } finally {
       setSaving(false);
     }

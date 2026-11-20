@@ -29,6 +29,16 @@ export async function loadAssignments(items) {
   return rows.map(toAssignment);
 }
 
+export async function deleteAssignments(itemId) {
+  const rows = await new Parse.Query(Assignment)
+    .equalTo("item", Item.createWithoutData(itemId))
+    .findAll();
+
+  if (rows.length > 0) {
+    await Parse.Object.destroyAll(rows);
+  }
+}
+
 export async function saveAssignments(family, itemId, selection) {
   const user = Parse.User.current();
   if (!user) throw new Error("Log in before assigning members.");

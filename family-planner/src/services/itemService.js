@@ -1,6 +1,7 @@
 import Parse from "./parse.js";
 import { loadMembers } from "./memberService.js";
 import { createFamilyACL } from "./familyAccess.js";
+import { deleteAssignments } from "./assignmentService.js";
 
 const Item = Parse.Object.extend("Item");
 const Family = Parse.Object.extend("Family");
@@ -92,5 +93,6 @@ export async function setItemCompleted(id, completed) {
 }
 
 export async function deleteItem(id) {
+  await deleteAssignments(id);
   await Item.createWithoutData(id).destroy();
 }

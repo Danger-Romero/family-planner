@@ -84,3 +84,18 @@ export function memberRow(memberType = "adult", objectId = "member1") {
     user: pointer("_User", "owner"), ACL: { owner: { read: true, write: true } }, createdAt: timestamp,
   };
 }
+
+export function itemRow(objectId = "item1") {
+  return {
+    objectId, title: "Milk", kind: "task", createdAt: timestamp,
+    family: pointer("Family", "family1"), createdBy: pointer("Member", "member1"),
+    ACL: { owner: { read: true, write: true } },
+  };
+}
+
+export function assignmentRow(objectId = "assignment1", memberId = "member1", role = "responsible", itemId = "item1") {
+  return {
+    objectId, item: pointer("Item", itemId), member: pointer("Member", memberId), role,
+    ACL: { owner: { read: true, write: true } }, createdAt: timestamp,
+  };
+}
