@@ -11,7 +11,13 @@
  */
 import { createTheme } from '@mui/material/styles';
 import { buttonOverrides } from './components/button';
-import { cardActionsOverrides, cardContentOverrides, cardHeaderOverrides, cardOverrides } from './components/card';
+import {
+  cardActionAreaOverrides,
+  cardActionsOverrides,
+  cardContentOverrides,
+  cardHeaderOverrides,
+  cardOverrides,
+} from './components/card';
 import { scheme, stateLayer, typeRoles, typescale, typeVariant, withOpacity } from './m3';
 
 const colorRole = (role) => ({ main: scheme(role), contrastText: scheme(`on-${role}`) });
@@ -99,5 +105,6 @@ export const theme = createTheme({
     MuiCardContent: cardContentOverrides,
     MuiCardHeader: cardHeaderOverrides,
     MuiCardActions: cardActionsOverrides,
+    MuiCardActionArea: cardActionAreaOverrides,
   },
 });

@@ -1,12 +1,13 @@
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
+import CardActionArea from '@mui/material/CardActionArea';
 import CardActions from '@mui/material/CardActions';
 import CardContent from '@mui/material/CardContent';
 import CardHeader from '@mui/material/CardHeader';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import { expect } from 'storybook/test';
+import { expect, within } from 'storybook/test';
 import { elevation, scheme } from '../m3';
 
 /** The computed `property` of `value` (e.g. a var(--…)) as it resolves inside `scope`. */
@@ -34,6 +35,22 @@ function ExampleCard({ title, ...props }) {
         <Button variant="text">Later</Button>
         <Button variant="text">Open</Button>
       </CardActions>
+    </Card>
+  );
+}
+
+/** A card that is tappable as a whole. `area` goes to the CardActionArea (e.g. `href`, `disabled`). */
+function TappableCard({ title, area, ...props }) {
+  return (
+    <Card {...props}>
+      <CardActionArea {...area}>
+        <CardContent>
+          <Typography variant="titleMedium">{title}</Typography>
+          <Typography variant="bodyMedium" sx={{ color: 'text.secondary' }}>
+            15:30 – 16:30
+          </Typography>
+        </CardContent>
+      </CardActionArea>
     </Card>
   );
 }
@@ -134,5 +151,74 @@ export const DarkTheme = {
       await expect(background).toBe(resolve(dark, 'background-color', scheme(container)));
       await expect(background).not.toBe(resolve(canvasElement, 'background-color', scheme(container)));
     }
+  },
+};
+
+/**
+ * Tappable cards: the whole card is one button (or one link, with `href` or `component={Link}`).
+ * Hover to raise the card one level, press and hold to see the ripple.
+ */
+export const Tappable = {
+  render: () => (
+    <Stack spacing={2} sx={{ maxWidth: 360 }}>
+      <TappableCard title="Tap elevated" variant="elevation" />
+      <TappableCard title="Tap filled" variant="filled" />
+      <TappableCard title="Tap outlined" variant="outlined" />
+      <TappableCard title="Football practice" variant="outlined" area={{ href: '#football-practice' }} />
+    </Stack>
+  ),
+  play: async ({ canvas }) => {
+    for (const title of ['Tap elevated', 'Tap filled', 'Tap outlined']) {
+      const card = cardOf(canvas, title);
+      await expect(within(card).getAllByRole('button')).toHaveLength(1);
+      const area = card.querySelector('.MuiCardActionArea-root').getBoundingClientRect();
+      await expect(area.height).toBeGreaterThanOrEqual(44);
+      // Fills the card inside its border (clientWidth is rounded, the box isn't).
+      await expect(Math.abs(area.width - card.clientWidth)).toBeLessThanOrEqual(1);
+    }
+    const link = canvas.getByRole('link', { name: /Football practice/ });
+    await expect(link).toHaveAttribute('href', '#football-practice');
+  },
+};
+
+/** Tab to a card with the keyboard: it shows a focus ring. An urgent card keeps its red outline too. */
+export const KeyboardFocus = {
+  render: () => (
+    <Stack spacing={2} sx={{ maxWidth: 360 }}>
+      <TappableCard title="Tap elevated" variant="elevation" />
+      <TappableCard title="Tap urgent" variant="outlined" color="error" />
+    </Stack>
+  ),
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    await userEvent.tab();
+    const first = cardOf(canvas, 'Tap elevated');
+    await expect(first.querySelector('.MuiCardActionArea-root')).toHaveFocus();
+    let ring = getComputedStyle(first);
+    await expect(ring.outlineStyle).toBe('solid');
+    await expect(ring.outlineWidth).toBe('3px');
+    await expect(ring.outlineOffset).toBe('2px');
+    await expect(ring.outlineColor).toBe(resolve(canvasElement, 'color', scheme('secondary')));
+
+    await userEvent.tab();
+    const urgent = cardOf(canvas, 'Tap urgent');
+    ring = getComputedStyle(urgent);
+    await expect(ring.outlineStyle).toBe('solid');
+    await expect(ring.borderTopWidth).toBe('2px');
+    await expect(ring.borderTopColor).toBe(resolve(canvasElement, 'color', scheme('error')));
+    await expect(getComputedStyle(first).outlineStyle).toBe('none');
+  },
+};
+
+/** A disabled tappable card: the card and its content at 38% opacity. */
+export const Disabled = {
+  render: () => (
+    <Stack spacing={2} sx={{ maxWidth: 360 }}>
+      <TappableCard title="Tap disabled" variant="elevation" area={{ disabled: true }} />
+    </Stack>
+  ),
+  play: async ({ canvas }) => {
+    const card = cardOf(canvas, 'Tap disabled');
+    await expect(within(card).getByRole('button')).toBeDisabled();
+    await expect(getComputedStyle(card).opacity).toBe('0.38');
   },
 };

@@ -11,6 +11,12 @@
  * `color="error"` gives any type a 2px outline in the error color, for urgent items. (Our tokens
  * have no orange or warning role.)
  *
+ * To make the whole card tappable, wrap its content in a `CardActionArea` (a button, or a link
+ * with `href` or `component={Link}`). Then hover raises the card one level and shows an 8% state
+ * layer, focus shows a 10% state layer and a focus ring, pressing shows the ripple, and a disabled
+ * action area fades the card to 38%. Buttons or checkboxes of the card's own go outside the
+ * `CardActionArea`: a button inside a button doesn't work.
+ *
  * Values are Google's published M3 values (Jetpack Compose `ElevatedCardTokens`,
  * `FilledCardTokens`, `OutlinedCardTokens`).
  */
@@ -47,6 +53,8 @@ const types = {
 // The type rules only set CSS variables (--m3-card-*); the root rule turns them into CSS.
 // No CSS property may end in "label" (see button.js).
 
+const actionArea = '.MuiCardActionArea-root';
+
 /** The `MuiCard` entry of the theme's `components` (see theme.js). */
 export const cardOverrides = {
   defaultProps: { variant: 'elevation' },
@@ -61,6 +69,19 @@ export const cardOverrides = {
       transition: transition(['box-shadow', 'opacity'], motion.defaultEffects),
       ...noMotion,
 
+      // A tappable card: its states come from the CardActionArea inside it.
+      // Hover raises the card one level, only on devices that can hover (so it doesn't stick after a tap).
+      '@media (hover: hover)': {
+        [`&:has(${actionArea}:hover)`]: { boxShadow: 'var(--m3-card-elevation-hover)' },
+      },
+      [`&:has(${actionArea}:active)`]: { boxShadow: 'var(--m3-card-elevation)' },
+      // The ring goes on the card: the card's overflow: hidden would clip one on the action area.
+      [`&:has(${actionArea}.Mui-focusVisible)`]: {
+        outline: `3px solid ${scheme('secondary')}`,
+        outlineOffset: 2,
+      },
+      [`&:has(${actionArea}.Mui-disabled)`]: { opacity: 0.38 },
+
       variants: [
         ...Object.entries(types).map(([variant, spec]) => ({
           props: { variant },
@@ -74,6 +95,20 @@ export const cardOverrides = {
         // After the types, so it replaces the outlined card's 1px outline.
         { props: { color: 'error' }, style: { border: `2px solid ${scheme('error')}` } },
       ],
+    },
+  },
+};
+
+/**
+ * The `MuiCardActionArea` entry. Its state layer (the focus highlight, in `currentcolor` =
+ * on-surface) already uses the M3 opacities: the theme's `action.hoverOpacity` and
+ * `action.focusOpacity` are `stateLayer.hover` and `stateLayer.focus`. This only gives it the M3 motion.
+ */
+export const cardActionAreaOverrides = {
+  styleOverrides: {
+    focusHighlight: {
+      transition: transition(['opacity'], motion.defaultEffects),
+      ...noMotion,
     },
   },
 };
