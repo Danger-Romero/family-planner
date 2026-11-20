@@ -32,6 +32,9 @@ export const theme = createTheme({
     rootSelector: ':root, [data-theme]',
   },
 
+  // MUI's own animations (the ripple, among others) stop when the device asks for reduced motion.
+  motion: { reducedMotion: 'system' },
+
   palette: {
     primary: colorRole('primary'),
     secondary: colorRole('secondary'),

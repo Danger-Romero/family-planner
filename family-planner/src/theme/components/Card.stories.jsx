@@ -155,6 +155,8 @@ const meta = {
           '',
           '**A card with its own buttons or checkbox** keeps them *outside* the `CardActionArea`:',
           'a button inside a button does not work, and screen readers would read it wrong.',
+          'The hover, focus and disabled states assume the `CardActionArea` fills the card; next to',
+          'other controls they still apply to the whole card, so such a card needs its own design for them.',
         ].join('\n'),
       },
     },
@@ -330,6 +332,33 @@ export const KeyboardFocus = {
     await expect(ring.borderTopWidth).toBe('2px');
     await expect(ring.borderTopColor).toBe(resolve(canvasElement, 'color', scheme('error')));
     await expect(getComputedStyle(first).outlineStyle).toBe('none');
+  },
+};
+
+/**
+ * Tappable cards inside another card: only the card whose action area it is reacts. The outer
+ * card doesn't fade, get a focus ring or rise.
+ */
+export const Nested = {
+  render: () => (
+    <Card variant="outlined" data-testid="outer" sx={{ maxWidth: 360 }}>
+      <CardContent>
+        <Stack spacing={1}>
+          <Typography variant="titleMedium">This week</Typography>
+          <TappableCard title="Inner tappable" variant="filled" />
+          <TappableCard title="Inner disabled" variant="filled" area={{ disabled: true }} />
+        </Stack>
+      </CardContent>
+    </Card>
+  ),
+  play: async ({ canvas, userEvent }) => {
+    const outer = canvas.getByTestId('outer');
+    await expect(getComputedStyle(outer).opacity).toBe('1');
+    await userEvent.tab();
+    const inner = cardOf(canvas, 'Inner tappable');
+    await expect(inner.querySelector('.MuiCardActionArea-root')).toHaveFocus();
+    await expect(getComputedStyle(inner).outlineStyle).toBe('solid');
+    await expect(getComputedStyle(outer).outlineStyle).toBe('none');
   },
 };
 

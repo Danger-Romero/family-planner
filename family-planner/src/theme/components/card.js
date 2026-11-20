@@ -17,6 +17,10 @@
  * action area fades the card to 38%. Buttons or checkboxes of the card's own go outside the
  * `CardActionArea`: a button inside a button doesn't work.
  *
+ * These states assume the `CardActionArea` fills the card. Next to other controls they would
+ * still apply to the whole card (the focus ring goes around those controls too, and a disabled
+ * action area fades them), so a card with its own controls needs its own design for that.
+ *
  * Values are Google's published M3 values (Jetpack Compose `ElevatedCardTokens`,
  * `FilledCardTokens`, `OutlinedCardTokens`).
  */
@@ -69,18 +73,19 @@ export const cardOverrides = {
       transition: transition(['box-shadow', 'opacity'], motion.defaultEffects),
       ...noMotion,
 
-      // A tappable card: its states come from the CardActionArea inside it.
+      // A tappable card: its states come from its own CardActionArea (a direct child, so a card
+      // nested inside doesn't move the outer one).
       // Hover raises the card one level, only on devices that can hover (so it doesn't stick after a tap).
       '@media (hover: hover)': {
-        [`&:has(${actionArea}:hover)`]: { boxShadow: 'var(--m3-card-elevation-hover)' },
+        [`&:has(> ${actionArea}:hover)`]: { boxShadow: 'var(--m3-card-elevation-hover)' },
       },
-      [`&:has(${actionArea}:active)`]: { boxShadow: 'var(--m3-card-elevation)' },
+      [`&:has(> ${actionArea}:active)`]: { boxShadow: 'var(--m3-card-elevation)' },
       // The ring goes on the card: the card's overflow: hidden would clip one on the action area.
-      [`&:has(${actionArea}.Mui-focusVisible)`]: {
+      [`&:has(> ${actionArea}.Mui-focusVisible)`]: {
         outline: `3px solid ${scheme('secondary')}`,
         outlineOffset: 2,
       },
-      [`&:has(${actionArea}.Mui-disabled)`]: { opacity: 0.38 },
+      [`&:has(> ${actionArea}.Mui-disabled)`]: { opacity: 0.38 },
 
       variants: [
         ...Object.entries(types).map(([variant, spec]) => ({
