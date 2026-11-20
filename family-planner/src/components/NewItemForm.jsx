@@ -1,4 +1,5 @@
 import { useState } from "react";
+import Button from "@mui/material/Button"
 
 export default function NewItemForm({ onAdd, disabled }) {
   const [kind, setKind] = useState("task");
@@ -111,12 +112,14 @@ export default function NewItemForm({ onAdd, disabled }) {
         </>
       )}
       {error && <p role="alert">{error}</p>}
-      <button
+      <Button
         type="submit"
+        variant="contained"
+        size="small"
         disabled={disabled || !title.trim() || (kind === "event" && !startsAt)}
       >
         Add item
-      </button>
+      </Button>
     </form>
   );
 }

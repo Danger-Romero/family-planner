@@ -1,4 +1,6 @@
 import { useState } from "react";
+import Button from '@mui/material/Button';
+
 
 export default function AddMemberForm({ onAdd }) {
   const [name, setName] = useState("");
@@ -50,7 +52,10 @@ export default function AddMemberForm({ onAdd }) {
         <label htmlFor="member-birth-date">Birth date (optional)</label>{" "}
         <input id="member-birth-date" type="date" value={birthDate} onChange={(event) => setBirthDate(event.target.value)} disabled={pending} />
       </p>
-      <button type="submit" disabled={pending || !name.trim()}>{pending ? "Adding member..." : "Add member"}</button>
+      <Button type="submit" 
+              variant="contained"
+              size="small"
+              disabled={pending || !name.trim()}>{pending ? "Adding member..." : "Add member"}</Button>
       {error && <p role="alert">{error}</p>}
       {success && <p role="status">{success}</p>}
     </form>

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { logIn, signUp } from "../services/authService.js";
+import Button from "@mui/material/Button";
 
 export default function AuthPage({ onAuthenticated }) {
   const [username, setUsername] = useState("");
@@ -36,7 +37,8 @@ export default function AuthPage({ onAuthenticated }) {
     }
   }
 
-  const cannotSubmit = pending || username.trim().length === 0 || password.length === 0;
+  const cannotSubmit =
+    pending || username.trim().length === 0 || password.length === 0;
 
   return (
     <>
@@ -67,8 +69,23 @@ export default function AuthPage({ onAuthenticated }) {
             required
           />
         </p>
-        <button type="submit" disabled={cannotSubmit}>Log in</button>{" "}
-        <button type="button" onClick={handleSignUp} disabled={cannotSubmit}>Sign up</button>
+        <Button
+          type="submit"
+          variant="contained"
+          size="small"
+          disabled={cannotSubmit}
+        >
+          Log in
+        </Button>{" "}
+        <Button
+          type="button"
+          variant="contained"
+          size="small"
+          onClick={handleSignUp}
+          disabled={cannotSubmit}
+        >
+          Sign up
+        </Button>
         {pending && <p role="status">Please wait...</p>}
         {error && <p role="alert">{error}</p>}
       </form>

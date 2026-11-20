@@ -1,3 +1,5 @@
+import Button from '@mui/material/Button';
+
 export default function Item({ item, onToggle, onRemove, disabled }) {
   return (
     <li>
@@ -29,14 +31,16 @@ export default function Item({ item, onToggle, onRemove, disabled }) {
         </>
       )}
       {onRemove && (
-        <button
+        <Button
           type="button"
+          variant="tonal"
+          size="xsmall"
           onClick={() => onRemove(item.id)}
           disabled={disabled}
           aria-label={`Delete ${item.kind}: ${item.title}`}
         >
           Delete
-        </button>
+        </Button>
       )}
     </li>
   );
