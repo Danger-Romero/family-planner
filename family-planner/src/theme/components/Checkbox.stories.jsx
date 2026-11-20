@@ -1,7 +1,10 @@
 import Box from '@mui/material/Box';
+import Card from '@mui/material/Card';
 import Checkbox from '@mui/material/Checkbox';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import { useState } from 'react';
+import { useArgs } from 'storybook/preview-api';
 import { expect, waitFor } from 'storybook/test';
 import { scheme, stateLayer, withOpacity } from '../m3';
 import { resolve } from './storyHelpers';
@@ -28,10 +31,55 @@ const meta = {
   title: 'Components/Checkbox',
   component: Checkbox,
   tags: ['autodocs', 'ai-generated'],
-  parameters: { layout: 'padded' },
+  parameters: {
+    layout: 'padded',
+    docs: {
+      description: {
+        component: [
+          "MUI's `Checkbox`, styled as the **Material 3 Expressive** checkbox by the theme in `src/theme`",
+          '(styles: `src/theme/components/checkbox.jsx`, icon: `CheckboxIcon.jsx`). Use it like any MUI',
+          'checkbox, from `@mui/material/Checkbox`:',
+          '',
+          '```jsx',
+          "<Checkbox checked={done} onChange={(event) => setDone(event.target.checked)}",
+          "  slotProps={{ input: { 'aria-label': 'Mark as done: Pack football kit' } }} />",
+          '```',
+          '',
+          '| State | Prop |',
+          '| --- | --- |',
+          '| Ticked | `checked` |',
+          '| Partly ticked | `indeterminate` |',
+          '| Error | `color="error"` |',
+          '| Disabled | `disabled` |',
+          '',
+          "MUI's `size` prop has no effect: M3 has one size (an 18px box, a 40px state-layer circle and a",
+          '48px touch area, where a tap anywhere toggles).',
+          '',
+          '**Without a visible label**, name the checkbox for screen readers with',
+          "`slotProps={{ input: { 'aria-label': '…' } }}`, as on the Today page's task rows.",
+        ].join('\n'),
+      },
+    },
+  },
 };
 
 export default meta;
+
+/** Try the props with the controls below. Clicking the checkbox updates the `checked` control. */
+export const Playground = {
+  args: { checked: false, indeterminate: false, disabled: false, color: 'primary' },
+  argTypes: { color: { control: 'inline-radio', options: ['primary', 'error'] } },
+  render: function Render(args) {
+    const [, updateArgs] = useArgs();
+    return (
+      <Checkbox
+        {...args}
+        onChange={(event) => updateArgs({ checked: event.target.checked, indeterminate: false })}
+        slotProps={{ input: { 'aria-label': 'Playground' } }}
+      />
+    );
+  },
+};
 
 /** Every state: unticked, ticked and partly ticked (`indeterminate`), plain, `color="error"` and disabled. */
 export const States = {
@@ -203,5 +251,50 @@ export const PressedColors = {
     await expect(tick.transitionProperty).toContain('stroke-dashoffset');
     const box = getComputedStyle(boxOf(canvas, 'Ticked'));
     await expect(box.transitionProperty).toContain('background-color');
+  },
+};
+
+/** A task row on the Today page: tick the box to mark the task done and strike through its title. */
+function TaskRow() {
+  const [done, setDone] = useState(false);
+  return (
+    <Card variant="outlined" sx={{ maxWidth: 360 }}>
+      <Stack direction="row" sx={{ gap: 0.5, alignItems: 'flex-start', p: 1.5, pl: 0.5 }}>
+        <Box sx={{ width: 48, height: 44, flex: 'none', display: 'grid', placeItems: 'center' }}>
+          <Checkbox
+            checked={done}
+            onChange={(event) => setDone(event.target.checked)}
+            slotProps={{ input: { 'aria-label': 'Mark as done: Pack football kit' } }}
+          />
+        </Box>
+        <Stack sx={{ flex: 1, minWidth: 0, pt: 1.25, gap: 0.5 }}>
+          <Typography
+            variant="titleMedium"
+            component="span"
+            sx={done ? { textDecorationLine: 'line-through', color: 'text.secondary' } : undefined}
+          >
+            Pack football kit
+          </Typography>
+          <Typography variant="bodySmall" sx={{ color: 'text.secondary' }}>
+            by 15:00
+          </Typography>
+        </Stack>
+      </Stack>
+    </Card>
+  );
+}
+
+/** The checkbox on a Today task card: named "Mark as done: …", and not inside any other control. */
+export const TodayRow = {
+  render: () => <TaskRow />,
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const box = canvas.getByRole('checkbox', { name: 'Mark as done: Pack football kit' });
+    await expect(box.closest('button, a, .MuiCardActionArea-root')).toBeNull(); // not inside another control
+    const title = canvas.getByText('Pack football kit');
+    await userEvent.click(box);
+    await expect(getComputedStyle(title).textDecorationLine).toBe('line-through');
+    await expect(getComputedStyle(title).color).toBe(resolve(canvasElement, 'color', scheme('on-surface-variant')));
+    await userEvent.click(box);
+    await expect(getComputedStyle(title).textDecorationLine).toBe('none');
   },
 };
