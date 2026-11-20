@@ -2,9 +2,13 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import Item from "../components/Item.jsx";
 import { loadItems } from "../services/itemService.js";
+import { loadMembers } from "../services/memberService.js";
+import { loadAssignments } from "../services/assignmentService.js";
 
 export default function OverviewPage({ family }) {
   const [items, setItems] = useState([]);
+  const [members, setMembers] = useState([]);
+  const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [now, setNow] = useState(() => new Date());
@@ -18,10 +22,16 @@ export default function OverviewPage({ family }) {
       setError("");
 
       try {
-        const loadedItems = await loadItems(family);
+        const [loadedItems, loadedMembers] = await Promise.all([
+          loadItems(family),
+          loadMembers(family),
+        ]);
+        const loadedAssignments = await loadAssignments(loadedItems);
 
         if (!cancelled) {
           setItems(loadedItems);
+          setMembers(loadedMembers);
+          setAssignments(loadedAssignments);
           setNow(new Date());
         }
       } catch (error) {
@@ -71,7 +81,14 @@ export default function OverviewPage({ family }) {
               <p>There are no unfinished tasks.</p>
             ) : (
               <ul>
-                {unfinishedTasks.map((item) => <Item key={item.id} item={item} />)}
+                {unfinishedTasks.map((item) => (
+                  <Item
+                    key={item.id}
+                    item={item}
+                    members={members}
+                    assignments={assignments.filter((assignment) => assignment.item === item.id)}
+                  />
+                ))}
               </ul>
             )}
           </section>
@@ -81,7 +98,14 @@ export default function OverviewPage({ family }) {
               <p>There are no upcoming or ongoing events.</p>
             ) : (
               <ul>
-                {upcomingEvents.map((item) => <Item key={item.id} item={item} />)}
+                {upcomingEvents.map((item) => (
+                  <Item
+                    key={item.id}
+                    item={item}
+                    members={members}
+                    assignments={assignments.filter((assignment) => assignment.item === item.id)}
+                  />
+                ))}
               </ul>
             )}
           </section>
