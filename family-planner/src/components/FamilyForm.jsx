@@ -1,4 +1,5 @@
 import { useState } from "react";
+import Button from '@mui/material/Button';
 
 export default function FamilyForm({ onCreate }) {
   const [name, setName] = useState("");
@@ -42,9 +43,13 @@ export default function FamilyForm({ onCreate }) {
         <input id="creator-name" value={memberName} onChange={(event) => setMemberName(event.target.value)} disabled={pending} required />
       </p>
       <p>Creating a family makes you its first adult member.</p>
-      <button type="submit" disabled={pending || !name.trim() || !memberName.trim()}>
-        {pending ? "Creating family..." : "Create family"}
-      </button>
+      <Button type="submit"
+              variant="tonal" 
+              size="xsmall"
+              disabled={pending || !name.trim() || !memberName.trim()}>
+                        {pending ? "Creating family..." : "Create family"}
+              
+      </Button>
       {error && <p role="alert">{error}</p>}
     </form>
   );

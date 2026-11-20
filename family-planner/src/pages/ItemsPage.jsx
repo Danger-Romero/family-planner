@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import Item from "../components/Item.jsx";
 import NewItemForm from "../components/NewItemForm.jsx";
+import { loadMembers } from "../services/memberService.js";
+import { loadAssignments, saveAssignments } from "../services/assignmentService.js";
 import {
   loadItems,
   addItem,
@@ -10,6 +12,8 @@ import {
 
 export default function ItemsPage({ family, member }) {
   const [items, setItems] = useState([]);
+  const [members, setMembers] = useState([]);
+  const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [error, setError] = useState("");
@@ -26,8 +30,17 @@ export default function ItemsPage({ family, member }) {
       setError("");
 
       try {
-        const loadedItems = await loadItems(family);
-        if (active) setItems(loadedItems);
+        const [loadedItems, loadedMembers] = await Promise.all([
+          loadItems(family),
+          loadMembers(family),
+        ]);
+        const loadedAssignments = await loadAssignments(loadedItems);
+
+        if (active) {
+          setItems(loadedItems);
+          setMembers(loadedMembers);
+          setAssignments(loadedAssignments);
+        }
       } catch (error) {
         if (active) setLoadError(error.message || "Could not load items.");
       } finally {
@@ -49,9 +62,61 @@ export default function ItemsPage({ family, member }) {
     try {
       const created = await addItem(family, member, values);
       setItems((currentItems) => [...currentItems, created]);
+
+      try {
+        const savedAssignments = await saveAssignments(family, created.id, values.assignments);
+        setAssignments((current) => [...current, ...savedAssignments]);
+      } catch {
+        setError("The item was saved, but its assignments may be incomplete. Edit assignments on this item to retry.");
+
+        try {
+          const loadedAssignments = await loadAssignments([created]);
+          setAssignments((current) => [
+            ...current.filter((assignment) => assignment.item !== created.id),
+            ...loadedAssignments,
+          ]);
+        } catch {
+          setError("The item was saved, but its assignments could not be reloaded. Refresh before editing assignments on this item.");
+        }
+      }
+
+      // The item exists even if saving its assignments failed, so clear the creation form.
       return true;
     } catch (error) {
       setError(error.message || "Could not add the item.");
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleSaveAssignments(itemId, selection) {
+    if (saving) return false;
+    const item = items.find((item) => item.id === itemId);
+    if (!item) return false;
+    setSaving(true);
+    setError("");
+
+    try {
+      const saved = await saveAssignments(family, itemId, selection);
+      setAssignments((current) => [
+        ...current.filter((assignment) => assignment.item !== itemId),
+        ...saved,
+      ]);
+      return true;
+    } catch (error) {
+      setError(error.message || "Could not save assignments. Please try again.");
+
+      try {
+        const loadedAssignments = await loadAssignments([item]);
+        setAssignments((current) => [
+          ...current.filter((assignment) => assignment.item !== itemId),
+          ...loadedAssignments,
+        ]);
+      } catch {
+        setError("Assignments may be partly saved, but could not be reloaded. Your selections have been kept. Try saving again.");
+      }
+
       return false;
     } finally {
       setSaving(false);
@@ -89,8 +154,18 @@ export default function ItemsPage({ family, member }) {
     try {
       await deleteItem(id);
       setItems((currentItems) => currentItems.filter((item) => item.id !== id));
+      setAssignments((current) => current.filter((assignment) => assignment.item !== id));
     } catch (error) {
       setError(error.message || "Could not delete the item.");
+
+      try {
+        const loadedItems = await loadItems(family);
+        const loadedAssignments = await loadAssignments(loadedItems);
+        setItems(loadedItems);
+        setAssignments(loadedAssignments);
+      } catch {
+        setError("The deletion could not be confirmed. Refresh before trying again.");
+      }
     } finally {
       setSaving(false);
     }
@@ -113,7 +188,7 @@ export default function ItemsPage({ family, member }) {
       ) : (
         <>
           {error && <p role="alert">{error}</p>}
-          <NewItemForm onAdd={handleAdd} disabled={saving} />
+          <NewItemForm members={members} onAdd={handleAdd} disabled={saving} />
           <h2>Family items</h2>
           {items.length === 0 ? (
             <p>No items yet. Add a task or event to get started.</p>
@@ -123,8 +198,11 @@ export default function ItemsPage({ family, member }) {
                 <Item
                   key={item.id}
                   item={item}
+                  members={members}
+                  assignments={assignments.filter((assignment) => assignment.item === item.id)}
                   onToggle={handleToggle}
                   onRemove={handleRemove}
+                  onSaveAssignments={handleSaveAssignments}
                   disabled={saving}
                 />
               ))}
