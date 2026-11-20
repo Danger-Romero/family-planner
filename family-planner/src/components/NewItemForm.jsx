@@ -1,12 +1,14 @@
 import { useState } from "react";
-import Button from "@mui/material/Button"
+import Button from "@mui/material/Button";
+import AssignmentFields from "./AssignmentFields.jsx";
 
-export default function NewItemForm({ onAdd, disabled }) {
+export default function NewItemForm({ members = [], onAdd, disabled }) {
   const [kind, setKind] = useState("task");
   const [title, setTitle] = useState("");
   const [dueAt, setDueAt] = useState("");
   const [startsAt, setStartsAt] = useState("");
   const [endsAt, setEndsAt] = useState("");
+  const [assignments, setAssignments] = useState([]);
   const [error, setError] = useState("");
 
   async function handleSubmit(event) {
@@ -37,6 +39,7 @@ export default function NewItemForm({ onAdd, disabled }) {
       dueAt: dueDate,
       startsAt: start,
       endsAt: end,
+      assignments,
     });
 
     if (saved) {
@@ -44,6 +47,7 @@ export default function NewItemForm({ onAdd, disabled }) {
       setDueAt("");
       setStartsAt("");
       setEndsAt("");
+      setAssignments([]);
     }
   }
 
@@ -111,6 +115,12 @@ export default function NewItemForm({ onAdd, disabled }) {
           </p>
         </>
       )}
+      <AssignmentFields
+        members={members}
+        value={assignments}
+        onChange={setAssignments}
+        disabled={disabled}
+      />
       {error && <p role="alert">{error}</p>}
       <Button
         type="submit"
