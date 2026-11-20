@@ -1,3 +1,7 @@
+import ChevronRight from '@mui/icons-material/ChevronRight';
+import LockOutlined from '@mui/icons-material/LockOutlined';
+import Repeat from '@mui/icons-material/Repeat';
+import Schedule from '@mui/icons-material/Schedule';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
@@ -8,7 +12,7 @@ import CardHeader from '@mui/material/CardHeader';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { expect, within } from 'storybook/test';
-import { elevation, scheme } from '../m3';
+import { elevation, scheme, typescale } from '../m3';
 
 /** The computed `property` of `value` (e.g. a var(--…)) as it resolves inside `scope`. */
 function resolve(scope, property, value) {
@@ -55,14 +59,134 @@ function TappableCard({ title, area, ...props }) {
   );
 }
 
+/** Stand-in for the checkbox, which is a later component. Hidden from screen readers: it's not a control. */
+function CheckboxPlaceholder() {
+  return (
+    <Box
+      aria-hidden="true"
+      sx={{ width: 18, height: 18, border: `2px solid ${scheme('on-surface-variant')}`, borderRadius: '2px' }}
+    />
+  );
+}
+
+/**
+ * Stand-in for the avatar, which is a later component: filled for the responsible person, hollow
+ * for people attending.
+ */
+function AvatarPlaceholder({ name, hollow = false }) {
+  return (
+    <Box
+      role="img"
+      aria-label={name}
+      sx={{
+        width: 28,
+        height: 28,
+        flex: 'none',
+        boxSizing: 'border-box',
+        display: 'grid',
+        placeItems: 'center',
+        borderRadius: '50%',
+        border: `2px solid ${scheme('primary')}`,
+        bgcolor: hollow ? 'transparent' : scheme('primary'),
+        color: hollow ? scheme('primary') : scheme('on-primary'),
+        ...typescale('label-large'),
+      }}
+    >
+      {name[0]}
+    </Box>
+  );
+}
+
+const RoleLabel = ({ children }) => (
+  <Typography variant="labelMedium" sx={{ color: 'text.secondary' }}>
+    {children}
+  </Typography>
+);
+
+/** Start and end time in a 48px column, as on the Today wireframe. */
+const Times = ({ start, end }) => (
+  <Stack sx={{ width: 48, flex: 'none', alignItems: 'center' }}>
+    <Typography variant="titleSmall">{start}</Typography>
+    <Typography variant="bodySmall" sx={{ color: 'text.secondary' }}>
+      {end}
+    </Typography>
+  </Stack>
+);
+
+/** A row of the Today list: a fixed-width lead (times or checkbox) and the item's text. */
+const Row = ({ children }) => (
+  <Stack direction="row" sx={{ gap: 0.5, alignItems: 'flex-start', p: 1.5, pl: 0.5 }}>
+    {children}
+  </Stack>
+);
+
 const meta = {
   title: 'Components/Card',
   component: Card,
   tags: ['autodocs', 'ai-generated'],
-  parameters: { layout: 'padded' },
+  parameters: {
+    layout: 'padded',
+    docs: {
+      description: {
+        component: [
+          "MUI's `Card`, styled as the **Material 3 Expressive** card by the theme in `src/theme`",
+          '(styles: `src/theme/components/card.js`). Use it like any MUI card, from `@mui/material/Card`:',
+          '',
+          '```jsx',
+          '<Card variant="outlined" color="error">',
+          '  <CardActionArea href="/items/42">',
+          '    <CardContent>…</CardContent>',
+          '  </CardActionArea>',
+          '</Card>',
+          '```',
+          '',
+          '| M3 type | `variant` |',
+          '| --- | --- |',
+          '| Elevated | `elevation` (the default) |',
+          '| Filled | `filled` |',
+          '| Outlined | `outlined` |',
+          '',
+          '`color="error"` gives any type a 2px outline in the error color, for **urgent** items.',
+          "MUI's `raised` and numeric `elevation` props have no effect: the type sets the shadow.",
+          '',
+          '**Tappable cards:** wrap the content in `CardActionArea` to make the whole card one button,',
+          'or pass `href` (or `component={Link}` and `to`) to make it a link. It then gets the M3 hover,',
+          'focus, pressed and disabled states.',
+          '',
+          '**A card with its own buttons or checkbox** keeps them *outside* the `CardActionArea`:',
+          'a button inside a button does not work, and screen readers would read it wrong.',
+        ].join('\n'),
+      },
+    },
+  },
 };
 
 export default meta;
+
+/** Try the props with the controls below. */
+export const Playground = {
+  args: { variant: 'elevation', color: 'none', tappable: false },
+  argTypes: {
+    variant: { control: 'select', options: ['elevation', 'filled', 'outlined'] },
+    color: { control: 'inline-radio', options: ['none', 'error'], mapping: { none: undefined, error: 'error' } },
+    tappable: { control: 'boolean', description: 'Wrap the content in a `CardActionArea` (story only).' },
+  },
+  render: ({ tappable, ...args }) => {
+    const content = (
+      <>
+        <CardHeader title="Football practice" subheader="Mon, Wed · 15:30 – 16:30" />
+        <CardContent>
+          <Typography variant="bodyMedium">Theo brings his own water bottle.</Typography>
+        </CardContent>
+      </>
+    );
+    return (
+      <Card {...args} sx={{ maxWidth: 360 }}>
+        {tappable ? <CardActionArea>{content}</CardActionArea> : content}
+      </Card>
+    );
+  },
+};
 
 /** The three M3 card types. MUI's `raised` and numeric `elevation` props don't change the M3 look. */
 export const Types = {
@@ -220,5 +344,96 @@ export const Disabled = {
     const card = cardOf(canvas, 'Tap disabled');
     await expect(within(card).getByRole('button')).toBeDisabled();
     await expect(getComputedStyle(card).opacity).toBe('0.38');
+  },
+};
+
+/**
+ * Rows modeled on the Today page, on a 320px phone: an urgent task, an event that opens its
+ * details, and a private "Busy" block. The checkbox and avatars are stand-ins until those
+ * components exist; the urgent task's checkbox will sit outside any `CardActionArea`.
+ */
+export const TodayExamples = {
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  render: () => (
+    <Stack spacing={1}>
+      <Card variant="outlined" color="error">
+        <Row>
+          <Box sx={{ width: 48, height: 44, flex: 'none', display: 'grid', placeItems: 'center' }}>
+            <CheckboxPlaceholder />
+          </Box>
+          <Stack sx={{ flex: 1, minWidth: 0, pt: 1.25, gap: 1 }}>
+            <Typography variant="titleMedium">
+              Sign up Ella for school trip and remember the signed permission slip
+            </Typography>
+            <Stack direction="row" sx={{ alignItems: 'center', gap: 0.75, flexWrap: 'wrap' }}>
+              <Typography
+                variant="labelLarge"
+                sx={{ color: 'error.main', display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
+              >
+                <Schedule sx={{ fontSize: 16 }} />
+                Due in 2 h
+              </Typography>
+              <Typography variant="bodySmall" sx={{ color: 'text.secondary' }}>
+                12:00
+              </Typography>
+              <Box sx={{ flex: 1 }} />
+              <RoleLabel>Responsible</RoleLabel>
+              <AvatarPlaceholder name="Anna" />
+            </Stack>
+          </Stack>
+        </Row>
+      </Card>
+
+      <Card variant="outlined">
+        <CardActionArea href="#football-practice">
+          <Row>
+            <Times start="15:30" end="16:30" />
+            <Stack sx={{ flex: 1, minWidth: 0, gap: 1 }}>
+              <Stack direction="row" sx={{ alignItems: 'center', gap: 0.75, flexWrap: 'wrap' }}>
+                <Typography variant="titleMedium">Football practice</Typography>
+                <Repeat titleAccess="Repeats" sx={{ fontSize: 16, color: 'text.secondary' }} />
+                <Typography variant="bodySmall" sx={{ color: 'text.secondary' }}>
+                  Mon, Wed
+                </Typography>
+              </Stack>
+              <Stack direction="row" sx={{ alignItems: 'center', gap: 0.75, flexWrap: 'wrap' }}>
+                <RoleLabel>Responsible</RoleLabel>
+                <AvatarPlaceholder name="Anna" />
+                <Box aria-hidden="true" sx={{ width: '1px', height: 20, mx: 0.5, bgcolor: 'divider' }} />
+                <RoleLabel>Attending</RoleLabel>
+                <AvatarPlaceholder name="Ella" hollow />
+              </Stack>
+            </Stack>
+            <ChevronRight sx={{ alignSelf: 'center', color: 'text.secondary' }} />
+          </Row>
+        </CardActionArea>
+      </Card>
+
+      <Card
+        variant="filled"
+        sx={{
+          background: `repeating-linear-gradient(135deg, ${scheme('surface-container-highest')} 0 8px, ${scheme('surface-container')} 8px 16px)`,
+        }}
+      >
+        <Row>
+          <Times start="17:00" end="18:00" />
+          <Stack direction="row" sx={{ flex: 1, minWidth: 0, alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+            <LockOutlined sx={{ fontSize: 16 }} />
+            <Typography variant="titleMedium">Busy</Typography>
+            <Typography variant="bodySmall" sx={{ color: 'text.secondary' }}>
+              Jonas · private
+            </Typography>
+          </Stack>
+        </Row>
+      </Card>
+    </Stack>
+  ),
+  play: async ({ canvasElement }) => {
+    await expect(window.innerWidth).toBeLessThan(600);
+    for (const card of canvasElement.querySelectorAll('.MuiCard-root')) {
+      await expect(card.getBoundingClientRect().right).toBeLessThanOrEqual(window.innerWidth);
+      await expect(card.scrollWidth).toBeLessThanOrEqual(card.clientWidth);
+    }
+    await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth);
   },
 };
