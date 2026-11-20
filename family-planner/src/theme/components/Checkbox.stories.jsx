@@ -53,7 +53,8 @@ const meta = {
           '| Disabled | `disabled` |',
           '',
           "MUI's `size` prop has no effect: M3 has one size (an 18px box, a 40px state-layer circle and a",
-          '48px touch area, where a tap anywhere toggles).',
+          '48px touch area, where a tap anywhere toggles). It takes up the whole 48×48px, so neighbours',
+          'never sit under its touch area.',
           '',
           '**Without a visible label**, name the checkbox for screen readers with',
           "`slotProps={{ input: { 'aria-label': '…' } }}`, as on the Today page's task rows.",
@@ -224,9 +225,36 @@ export const KeyboardFocus = {
     await expect(style.outlineColor).toBe(resolve(canvasElement, 'color', scheme('secondary')));
     // The state layer fades in.
     await waitFor(() => expect(getComputedStyle(root).backgroundColor).toBe(focusLayer));
+    // M3 shows the ring and the 10% layer, not MUI's pulsing focus ripple on top.
+    await expect(root.querySelector('.MuiTouchRipple-ripplePulsate')).toBeNull();
     await userEvent.tab();
     root = rootOf(canvas, 'Ticked error');
     await waitFor(() => expect(getComputedStyle(root).backgroundColor).toBe(errorFocusLayer));
+    await expect(root.querySelector('.MuiTouchRipple-ripplePulsate')).toBeNull();
+  },
+};
+
+/**
+ * Checkboxes stacked with no space between them: each keeps its own 48px touch area, so a tap
+ * near the edge of one never toggles its neighbour.
+ */
+export const Stacked = {
+  render: () => (
+    <Stack sx={{ m: 4 }}>
+      <Named name="First" />
+      <Named name="Second" />
+    </Stack>
+  ),
+  play: async ({ canvas, userEvent }) => {
+    const first = canvas.getByRole('checkbox', { name: 'First' });
+    const second = canvas.getByRole('checkbox', { name: 'Second' });
+    const circle = rootOf(canvas, 'First').getBoundingClientRect();
+    // 2px inside the bottom of the first checkbox's circle.
+    const target = document.elementFromPoint(circle.left + circle.width / 2, circle.bottom - 2);
+    await expect(target).toBe(first);
+    await userEvent.click(target);
+    await expect(first).toBeChecked();
+    await expect(second).not.toBeChecked();
   },
 };
 
@@ -260,7 +288,7 @@ function TaskRow() {
   return (
     <Card variant="outlined" sx={{ maxWidth: 360 }}>
       <Stack direction="row" sx={{ gap: 0.5, alignItems: 'flex-start', p: 1.5, pl: 0.5 }}>
-        <Box sx={{ width: 48, height: 44, flex: 'none', display: 'grid', placeItems: 'center' }}>
+        <Box sx={{ width: 48, height: 48, flex: 'none', display: 'grid', placeItems: 'center' }}>
           <Checkbox
             checked={done}
             onChange={(event) => setDone(event.target.checked)}

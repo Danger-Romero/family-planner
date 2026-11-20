@@ -10,7 +10,8 @@
  *
  * The theme gives every Checkbox our own icon (`CheckboxIcon.jsx`): an 18px box that draws a tick or
  * a dash. MUI's `size` prop has no effect (M3 has one size). The state-layer circle is 40px and
- * the touch area 48px: a tap anywhere in it toggles.
+ * the touch area 48px: a tap anywhere in it toggles. The checkbox takes up the whole 48×48px
+ * (4px margin around the circle), so a neighbour never sits under its touch area.
  *
  * States: hover 8% and focus 10% state layers on the circle (on-surface when unticked, primary
  * when ticked, error with `color="error"`), a 3px secondary focus ring, and MUI's ripple when
@@ -48,6 +49,8 @@ export const checkboxOverrides = {
     icon: <CheckboxIcon />,
     checkedIcon: <CheckboxIcon />,
     indeterminateIcon: <CheckboxIcon />,
+    // M3 shows a focus ring and a 10% state layer instead of MUI's pulsing focus ripple.
+    disableFocusRipple: true,
   },
   styleOverrides: {
     root: {
@@ -61,8 +64,10 @@ export const checkboxOverrides = {
       '--m3-checkbox-state': '0%',
       color: scheme('primary'),
 
-      // The 40px state-layer circle around the 18px box.
+      // The 40px state-layer circle around the 18px box, and 4px around it for the touch area,
+      // so a neighbour can't sit under it (as Compose's minimumInteractiveComponentSize).
       padding: 11,
+      margin: 4,
       borderRadius: '50%',
       backgroundColor: stateBackground,
       transition: transition(['background-color'], motion.defaultEffects),
@@ -134,6 +139,13 @@ export const checkboxOverrides = {
         '--m3-checkbox-fill': onSurface38,
         '--m3-checkbox-mark': scheme('surface'),
         '--m3-checkbox-state': '0%',
+      },
+
+      // Windows High Contrast forces the box to the page colors but not an SVG's stroke, so a
+      // white tick would vanish on the forced white box. Draw the marks in the system text color.
+      '@media (forced-colors: active)': {
+        [`${tick}, ${dash}`]: { stroke: 'CanvasText' },
+        '&.Mui-disabled': { [box]: { borderColor: 'GrayText' }, [`${tick}, ${dash}`]: { stroke: 'GrayText' } },
       },
 
       variants: [
