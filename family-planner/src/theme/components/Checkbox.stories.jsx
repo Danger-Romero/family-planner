@@ -3,7 +3,7 @@ import Checkbox from '@mui/material/Checkbox';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { expect, waitFor } from 'storybook/test';
-import { scheme, withOpacity } from '../m3';
+import { scheme, stateLayer, withOpacity } from '../m3';
 import { resolve } from './storyHelpers';
 
 const rootOf = (canvas, name) => canvas.getByRole('checkbox', { name }).closest('.MuiCheckbox-root');
@@ -150,5 +150,58 @@ export const DarkTheme = {
     await expect(fill).not.toBe(resolve(canvasElement, 'color', scheme('primary')));
     const outline = getComputedStyle(boxOf(canvas, 'Unticked')).borderTopColor;
     await expect(outline).toBe(resolve(dark, 'color', scheme('on-surface-variant')));
+  },
+};
+
+/** Tab to a checkbox with the keyboard: a focus ring and a 10% state layer around the box. */
+export const KeyboardFocus = {
+  render: () => (
+    <Stack direction="row" spacing={2}>
+      <Named name="Unticked" />
+      <Named name="Ticked error" color="error" defaultChecked />
+    </Stack>
+  ),
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    // Resolved before waitFor: resolve() changes the DOM, which would rerun waitFor's callback forever.
+    const c = (value) => resolve(canvasElement, 'background-color', value);
+    const focusLayer = c(withOpacity(scheme('on-surface'), stateLayer.focus));
+    const errorFocusLayer = c(withOpacity(scheme('error'), stateLayer.focus));
+    await userEvent.tab();
+    let root = rootOf(canvas, 'Unticked');
+    await expect(canvas.getByRole('checkbox', { name: 'Unticked' })).toHaveFocus();
+    let style = getComputedStyle(root);
+    await expect(style.outlineStyle).toBe('solid');
+    await expect(style.outlineWidth).toBe('3px');
+    await expect(style.outlineOffset).toBe('2px');
+    await expect(style.outlineColor).toBe(resolve(canvasElement, 'color', scheme('secondary')));
+    // The state layer fades in.
+    await waitFor(() => expect(getComputedStyle(root).backgroundColor).toBe(focusLayer));
+    await userEvent.tab();
+    root = rootOf(canvas, 'Ticked error');
+    await waitFor(() => expect(getComputedStyle(root).backgroundColor).toBe(errorFocusLayer));
+  },
+};
+
+/**
+ * The press color (MUI's ripple draws in the root's `color`): `primary` on an unticked box,
+ * `on-surface` on a ticked one, `error` with `color="error"`. The marks and box animate.
+ */
+export const PressedColors = {
+  render: () => (
+    <Stack direction="row" spacing={2}>
+      <Named name="Unticked" />
+      <Named name="Ticked" defaultChecked />
+      <Named name="Unticked error" color="error" />
+    </Stack>
+  ),
+  play: async ({ canvas, canvasElement }) => {
+    const c = (value) => resolve(canvasElement, 'color', value);
+    await expect(getComputedStyle(rootOf(canvas, 'Unticked')).color).toBe(c(scheme('primary')));
+    await expect(getComputedStyle(rootOf(canvas, 'Ticked')).color).toBe(c(scheme('on-surface')));
+    await expect(getComputedStyle(rootOf(canvas, 'Unticked error')).color).toBe(c(scheme('error')));
+    const tick = getComputedStyle(markOf(canvas, 'Ticked', 'tick'));
+    await expect(tick.transitionProperty).toContain('stroke-dashoffset');
+    const box = getComputedStyle(boxOf(canvas, 'Ticked'));
+    await expect(box.transitionProperty).toContain('background-color');
   },
 };
