@@ -13,16 +13,7 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { expect, within } from 'storybook/test';
 import { elevation, scheme, typescale } from '../m3';
-
-/** The computed `property` of `value` (e.g. a var(--…)) as it resolves inside `scope`. */
-function resolve(scope, property, value) {
-  const probe = document.createElement('div');
-  probe.style.setProperty(property, value);
-  scope.append(probe);
-  const result = getComputedStyle(probe).getPropertyValue(property);
-  probe.remove();
-  return result;
-}
+import { resolve } from './storyHelpers';
 
 /** The card that contains `text`. */
 const cardOf = (canvas, text) => canvas.getByText(text).closest('.MuiCard-root');
