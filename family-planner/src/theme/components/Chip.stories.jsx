@@ -1,7 +1,8 @@
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import { useState } from 'react';
-import { expect, waitFor } from 'storybook/test';
+import { useArgs } from 'storybook/preview-api';
+import { expect, waitFor, within } from 'storybook/test';
 import { scheme, stateLayer, withOpacity } from '../m3';
 import { resolve, rgba } from './storyHelpers';
 
@@ -20,10 +21,54 @@ const meta = {
   title: 'Components/Chip',
   component: Chip,
   tags: ['autodocs', 'ai-generated'],
-  parameters: { layout: 'padded' },
+  parameters: {
+    layout: 'padded',
+    docs: {
+      description: {
+        component: [
+          "MUI's `Chip`, styled as the **Material 3 Expressive filter chip** by the theme in `src/theme`",
+          '(styles: `src/theme/components/chip.js`). Use it like any MUI chip, from `@mui/material/Chip`, and',
+          'say whether it is on with `aria-pressed`:',
+          '',
+          '```jsx',
+          "<Chip label=\"Ella\" aria-pressed={view === 'ella'} onClick={() => setView('ella')} />",
+          '```',
+          '',
+          '| State | Prop |',
+          '| --- | --- |',
+          '| Off | `aria-pressed={false}` |',
+          '| On (a fill and a checkmark) | `aria-pressed={true}` |',
+          '| Disabled | `disabled` |',
+          '',
+          'The theme draws the fill and the checkmark from `aria-pressed`, so a chip looks on exactly when',
+          "screen readers announce it as pressed. MUI's `variant`, `color` and `size` have no effect: M3",
+          'chips have one look and one size.',
+          '',
+          'A chip with `onClick` takes up 48px of height in the layout: its touch area, where a tap',
+          'anywhere toggles it. A chip without `onClick` is just a label, with no states.',
+        ].join('\n'),
+      },
+    },
+  },
 };
 
 export default meta;
+
+/** Try the props with the controls below. Clicking the chip updates the `selected` control. */
+export const Playground = {
+  args: { label: 'Ella', selected: false, disabled: false },
+  render: function Render(args) {
+    const [, updateArgs] = useArgs();
+    return (
+      <Chip
+        label={args.label}
+        aria-pressed={args.selected}
+        disabled={args.disabled}
+        onClick={() => updateArgs({ selected: !args.selected })}
+      />
+    );
+  },
+};
 
 /** Off, on, both disabled, and a chip with MUI's `color` and `variant` (which look like Off). */
 export const States = {
@@ -228,5 +273,37 @@ export const Motion = {
     await expect(getComputedStyle(chip).transitionProperty).toContain('box-shadow');
     await expect(checkOf(chip).transitionProperty).toContain('width');
     await expect(getComputedStyle(labelOf(chip)).transitionProperty).toContain('padding-left');
+  },
+};
+
+/** The saved views on the Today page: one on at a time. */
+function SavedViews() {
+  const [view, setView] = useState('Everyone');
+  return (
+    <Box role="group" aria-label="Saved views" sx={{ display: 'flex', gap: 1, px: 2.5 }}>
+      {['Everyone', "I'm responsible", 'Ella'].map((name) => (
+        // Tapping the view that's on keeps it on.
+        <Chip key={name} label={name} aria-pressed={view === name} onClick={() => setView(name)} />
+      ))}
+    </Box>
+  );
+}
+
+/** The Today page's row of saved views: tap one to show it; one is on at a time. */
+export const TodaySavedViews = {
+  render: () => <SavedViews />,
+  play: async ({ canvas, userEvent }) => {
+    const group = canvas.getByRole('group', { name: 'Saved views' });
+    await expect(within(group).getByRole('button', { name: 'Everyone', pressed: true })).toBeVisible();
+    await userEvent.click(within(group).getByRole('button', { name: 'Ella' }));
+    const ella = within(group).getByRole('button', { name: 'Ella', pressed: true });
+    await expect(within(group).getAllByRole('button', { pressed: true })).toEqual([ella]); // one at a time
+    await waitFor(() => expect(getComputedStyle(ella, '::before').width).toBe('18px'));
+    await expect(within(group).getByRole('button', { name: 'Everyone', pressed: false })).toBeVisible();
+    await waitFor(() =>
+      expect(getComputedStyle(within(group).getByRole('button', { name: 'Everyone' }), '::before').width).toBe('0px'),
+    );
+    await userEvent.click(ella);
+    await expect(ella).toHaveAttribute('aria-pressed', 'true'); // stays on
   },
 };
