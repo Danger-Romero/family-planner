@@ -1,8 +1,8 @@
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import { useState } from 'react';
-import { expect } from 'storybook/test';
-import { scheme, withOpacity } from '../m3';
+import { expect, waitFor } from 'storybook/test';
+import { scheme, stateLayer, withOpacity } from '../m3';
 import { resolve, rgba } from './storyHelpers';
 
 /** A filter chip that turns on and off when tapped. */
@@ -163,5 +163,70 @@ export const DarkTheme = {
     await expect(rgba(on.color)).toEqual(rgba(resolve(dark, 'color', scheme('on-secondary-container'))));
     const off = getComputedStyle(chipOf(canvas, 'Off'));
     await expect(rgba(off.borderTopColor)).toEqual(rgba(resolve(dark, 'color', scheme('outline-variant'))));
+  },
+};
+
+/** Turn a chip on and off with the mouse, Space and Enter. */
+export const Toggle = {
+  render: () => <ToggleChip label="Ella" />,
+  play: async ({ canvas, userEvent }) => {
+    const chip = chipOf(canvas, 'Ella');
+    await userEvent.click(chip);
+    await expect(chip).toHaveAttribute('aria-pressed', 'true');
+    await waitFor(() => expect(checkOf(chip).width).toBe('18px'));
+    await expect(chipOf(canvas, 'Ella')).toBe(chip); // same node
+    await userEvent.keyboard(' ');
+    await expect(chip).toHaveAttribute('aria-pressed', 'false');
+    await waitFor(() => expect(checkOf(chip).width).toBe('0px'));
+    await userEvent.keyboard('{Enter}');
+    await expect(chip).toHaveAttribute('aria-pressed', 'true');
+  },
+};
+
+/** Tab to a chip: a focus ring and a 10% state layer. Tab skips a disabled chip. */
+export const KeyboardFocus = {
+  render: () => (
+    <Row>
+      <ToggleChip label="First" />
+      <ToggleChip label="Second disabled" disabled />
+      <ToggleChip label="Third" defaultSelected />
+    </Row>
+  ),
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    // Every expected colour first: resolve() changes the DOM, which would rerun waitFor forever.
+    const c = (value) => rgba(resolve(canvasElement, 'background-color', value));
+    const offFocus = c(withOpacity(scheme('on-surface-variant'), stateLayer.focus));
+    const onFocus = c(
+      `color-mix(in srgb, ${scheme('on-secondary-container')} ${stateLayer.focus * 100}%, ${scheme('secondary-container')})`,
+    );
+    const ring = rgba(resolve(canvasElement, 'color', scheme('secondary')));
+    await userEvent.tab();
+    let chip = chipOf(canvas, 'First');
+    await expect(chip).toHaveFocus();
+    const style = getComputedStyle(chip);
+    await expect([style.outlineStyle, style.outlineWidth, style.outlineOffset]).toEqual(['solid', '3px', '2px']);
+    await expect(rgba(style.outlineColor)).toEqual(ring);
+    await waitFor(() => expect(rgba(getComputedStyle(chip).backgroundColor)).toEqual(offFocus)); // fades in
+    await expect(chip.querySelector('.MuiTouchRipple-ripplePulsate')).toBeNull();
+    await userEvent.tab(); // skips the disabled chip
+    chip = chipOf(canvas, 'Third');
+    await expect(chip).toHaveFocus();
+    await waitFor(() => expect(rgba(getComputedStyle(chip).backgroundColor)).toEqual(onFocus));
+  },
+};
+
+/**
+ * Turning a chip on, the checkmark grows in and the fill fades in; the label moves over to make
+ * room. A chip that starts on doesn't animate.
+ */
+export const Motion = {
+  render: () => <ToggleChip label="On" defaultSelected />,
+  play: async ({ canvas }) => {
+    await expect(document.getAnimations()).toHaveLength(0); // a chip that starts on doesn't animate
+    const chip = chipOf(canvas, 'On');
+    await expect(getComputedStyle(chip).transitionProperty).toContain('background-color');
+    await expect(getComputedStyle(chip).transitionProperty).toContain('box-shadow');
+    await expect(checkOf(chip).transitionProperty).toContain('width');
+    await expect(getComputedStyle(labelOf(chip)).transitionProperty).toContain('padding-left');
   },
 };

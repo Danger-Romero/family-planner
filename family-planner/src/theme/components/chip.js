@@ -18,10 +18,18 @@
  * height in the layout, so a neighbour never sits under its touch area. A chip without `onClick`
  * has the same look, but no states and no touch area.
  *
+ * States: hover 8% (only on devices that can hover) and focus 10% state layers in the label color;
+ * an on chip also rises to elevation 1 on hover. Keyboard focus shows a 3px secondary ring. The
+ * press color is MUI's ripple. Turning a chip on, the checkmark grows in, the fill fades in and the
+ * label moves over; nothing animates under "reduce motion". In Windows High Contrast the
+ * checkmark is drawn in the system text color.
+ *
  * Values are Google's published M3 values (Jetpack Compose `FilterChipTokens`).
  */
-import { corner, scheme, typescale, withOpacity } from '../m3';
+import { corner, elevation, motion, scheme, stateLayer, transition, typescale, withOpacity } from '../m3';
 
+const percent = (opacity) => `${opacity * 100}%`;
+const noMotion = { '@media (prefers-reduced-motion: reduce)': { transition: 'none' } };
 const onSurface = (opacity) => withOpacity(scheme('on-surface'), opacity);
 
 const labelColor = 'var(--m3-chip-label-color)';
@@ -52,6 +60,7 @@ export const chipOverrides = {
       '--m3-chip-check-width': '0px',
       '--m3-chip-check-margin': '0px',
       '--m3-chip-label-start': '15px',
+      '--m3-chip-elevation-hover': 'none',
 
       height: 32,
       borderRadius: corner.small,
@@ -62,6 +71,8 @@ export const chipOverrides = {
       backgroundColor: background,
       boxShadow: 'none',
       ...typescale('label-large'),
+      transition: transition(['background-color', 'border-color', 'color', 'box-shadow'], motion.defaultEffects),
+      ...noMotion,
 
       // The checkmark: 8px from the edge (7px + the border), 18px, then 8px to the label.
       '&::before': {
@@ -76,6 +87,8 @@ export const chipOverrides = {
         // Pinned to the left, so a growing width wipes the checkmark in from the left.
         maskPosition: 'left center',
         maskRepeat: 'no-repeat',
+        transition: transition(['width', 'margin-left'], motion.defaultEffects),
+        ...noMotion,
       },
       // A chip given its own icon or avatar keeps it, without a checkmark next to it.
       '&:has(> .MuiChip-icon, > .MuiChip-avatar)::before': { display: 'none' },
@@ -84,6 +97,23 @@ export const chipOverrides = {
       // styles; repeat ours so they win.
       '&:hover, &.MuiChip-clickable:hover, &.Mui-focusVisible': { backgroundColor: background },
       '&:active': { boxShadow: 'none' },
+
+      // Only on devices that can hover, so the hover color doesn't stick after a tap.
+      '@media (hover: hover)': {
+        '&.MuiChip-clickable:hover': {
+          '--m3-chip-state': percent(stateLayer.hover),
+          boxShadow: 'var(--m3-chip-elevation-hover)',
+        },
+      },
+      // After hover, so focus and pressed win over it.
+      '&.MuiChip-clickable.Mui-focusVisible': {
+        '--m3-chip-state': percent(stateLayer.focus),
+        outline: `3px solid ${scheme('secondary')}`,
+        outlineOffset: 2,
+      },
+      // Pressed: back down to elevation 0. The press color is MUI's ripple, in the label color and
+      // scaled to 10% by MuiButtonBase in theme.js.
+      '&.MuiChip-clickable:active': { boxShadow: 'none' },
 
       // A chip you can tap: a touch area of at least 48×48px, centered on the chip, and room for
       // it in the layout (32px + 2 × 8px), so a neighbour can't sit under it.
@@ -109,6 +139,7 @@ export const chipOverrides = {
         '--m3-chip-check-width': '18px',
         '--m3-chip-check-margin': '7px',
         '--m3-chip-label-start': '8px',
+        '--m3-chip-elevation-hover': elevation(1),
       },
 
       // M3 dims the colors, not the whole chip.
@@ -116,14 +147,24 @@ export const chipOverrides = {
         opacity: 1,
         '--m3-chip-outline': onSurface(0.12),
         '--m3-chip-label-color': onSurface(0.38),
+        '--m3-chip-state': '0%',
       },
       '&.Mui-disabled[aria-pressed="true"]': {
         '--m3-chip-container': onSurface(0.12),
         '--m3-chip-outline': 'transparent',
       },
+
+      // Windows High Contrast paints the checkmark's background in the page color, so it would
+      // vanish. Draw it in the system text color instead.
+      '@media (forced-colors: active)': {
+        '&::before': { forcedColorAdjust: 'none', backgroundColor: 'CanvasText' },
+        '&.Mui-disabled::before': { backgroundColor: 'GrayText' },
+      },
     },
     label: {
       padding: '0 15px 0 var(--m3-chip-label-start)',
+      transition: transition(['padding-left'], motion.defaultEffects),
+      ...noMotion,
     },
   },
 };
