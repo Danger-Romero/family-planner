@@ -1,6 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import Item from "../components/Item.jsx";
+import { loadItems } from "../services/itemService.js";
+import { loadMembers } from "../services/memberService.js";
+import { loadAssignments } from "../services/assignmentService.js";
 
 export default function CalendarPage({ family }) {
   const [days] = useState(() =>
@@ -12,7 +16,87 @@ export default function CalendarPage({ family }) {
     }),
   );
 
-  const [selectedDate, setSelectedDate] = useState(() => days[0]);
+function isOnDate(item, date) {
+  const start = new Date(date);
+  start.setHours(0, 0, 0, 0);
+
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+
+  if (item.kind === "task") {
+    return Boolean(
+      item.dueAt &&
+      item.dueAt >= start &&
+      item.dueAt < end
+    );
+  }
+
+  if (item.kind === "event" && item.startsAt) {
+    if (!item.endsAt) {
+      return item.startsAt >= start && item.startsAt < end;
+    }
+
+    return item.startsAt < end && item.endsAt > start;
+  }
+
+  return false;
+}
+
+const [selectedDate, setSelectedDate] = useState(() => days[0]);
+const [items, setItems] = useState([]);
+const [members, setMembers] = useState([]);
+const [assignments, setAssignments] = useState([]);
+const [loading, setLoading] = useState(true);
+const [error, setError] = useState("");
+const [reload, setReload] = useState(0);
+
+useEffect(() => {
+  let active = true;
+
+  async function load() {
+    setLoading(true);
+    setError("");
+
+    try {
+      const [loadedItems, loadedMembers] = await Promise.all([
+        loadItems(family),
+        loadMembers(family),
+      ]);
+
+      const loadedAssignments = await loadAssignments(loadedItems);
+
+      if (active) {
+        setItems(loadedItems);
+        setMembers(loadedMembers);
+        setAssignments(loadedAssignments);
+      }
+    } catch (error) {
+      if (active) {
+        setError(error.message || "Could not load the calendar.");
+      }
+    } finally {
+      if (active) setLoading(false);
+    }
+  }
+
+  load();
+
+  return () => {
+    active = false;
+  };
+}, [family, reload]);
+
+const visibleItems = items
+  .filter((item) => isOnDate(item, selectedDate))
+  .sort((first, second) => {
+    const firstDate =
+      first.kind === "task" ? first.dueAt : first.startsAt;
+
+    const secondDate =
+      second.kind === "task" ? second.dueAt : second.startsAt;
+
+    return firstDate - secondDate;
+  });
 
   return (
     <>
@@ -68,7 +152,35 @@ export default function CalendarPage({ family }) {
         })}
       </h2>
 
-      <p>Items for this date should go here</p>
+      {loading ? (
+  <p role="status">Loading the calendar...</p>
+) : error ? (
+  <>
+    <p role="alert">{error}</p>
+    <Button
+      type="button"
+      variant="outlined"
+      onClick={() => setReload((current) => current + 1)}
+    >
+      Try again
+    </Button>
+  </>
+) : visibleItems.length === 0 ? (
+  <p>No tasks or events for this date.</p>
+) : (
+  <ul>
+    {visibleItems.map((item) => (
+      <Item
+        key={item.id}
+        item={item}
+        members={members}
+        assignments={assignments.filter(
+          (assignment) => assignment.item === item.id,
+        )}
+      />
+    ))}
+  </ul>
+)}
     </>
   );
 }
