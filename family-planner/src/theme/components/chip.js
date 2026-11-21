@@ -105,8 +105,9 @@ export const chipOverrides = {
           boxShadow: 'var(--m3-chip-elevation-hover)',
         },
       },
-      // After hover, so focus and pressed win over it.
-      '&.MuiChip-clickable.Mui-focusVisible': {
+      // After hover, so focus and pressed win over it. Every chip you can focus (with onClick or
+      // only onDelete) is a ButtonBase.
+      '&.MuiButtonBase-root.Mui-focusVisible': {
         '--m3-chip-state': percent(stateLayer.focus),
         outline: `3px solid ${scheme('secondary')}`,
         outlineOffset: 2,
@@ -130,6 +131,8 @@ export const chipOverrides = {
           height: 48,
           transform: 'translate(-50%, -50%)',
         },
+        // The delete icon of an input chip sits above the touch area, so a tap on it deletes.
+        '& .MuiChip-deleteIcon': { position: 'relative', zIndex: 1 },
       },
 
       '&[aria-pressed="true"]': {
@@ -158,6 +161,8 @@ export const chipOverrides = {
       // vanish. Draw it in the system text color instead.
       '@media (forced-colors: active)': {
         '&::before': { forcedColorAdjust: 'none', backgroundColor: 'CanvasText' },
+        // A disabled chip in the system's disabled color, like the browser's own disabled buttons.
+        '&.Mui-disabled': { color: 'GrayText', borderColor: 'GrayText' },
         '&.Mui-disabled::before': { backgroundColor: 'GrayText' },
       },
     },

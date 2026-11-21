@@ -307,3 +307,42 @@ export const TodaySavedViews = {
     await expect(ella).toHaveAttribute('aria-pressed', 'true'); // stays on
   },
 };
+
+/** Anna: a filter chip you can also remove. */
+function RemovableChip() {
+  const [selected, setSelected] = useState(false);
+  const [removed, setRemoved] = useState(false);
+  if (removed) return <span>Anna removed</span>;
+  return (
+    <Chip label="Anna" aria-pressed={selected} onClick={() => setSelected(!selected)} onDelete={() => setRemoved(true)} />
+  );
+}
+
+/**
+ * Not designed for the Today page, but styled by the same theme: a chip with only `onDelete` shows
+ * the focus ring, and tapping the delete icon of a chip that also has `onClick` deletes it.
+ */
+export const InputChips = {
+  render: () => (
+    <Row>
+      <Chip label="Theo" onDelete={() => {}} />
+      <RemovableChip />
+    </Row>
+  ),
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const focusLayer = rgba(resolve(canvasElement, 'background-color', withOpacity(scheme('on-surface-variant'), stateLayer.focus)));
+    await userEvent.tab();
+    const theo = chipOf(canvas, 'Theo');
+    await expect(theo).toHaveFocus();
+    const style = getComputedStyle(theo);
+    await expect([style.outlineStyle, style.outlineWidth]).toEqual(['solid', '3px']);
+    await waitFor(() => expect(rgba(getComputedStyle(theo).backgroundColor)).toEqual(focusLayer));
+    // A tap on the delete icon lands on the icon, not on the chip's touch area.
+    const anna = chipOf(canvas, 'Anna');
+    const icon = anna.querySelector('.MuiChip-deleteIcon').getBoundingClientRect();
+    const hit = document.elementFromPoint(icon.left + icon.width / 2, icon.top + icon.height / 2);
+    await expect(anna.querySelector('.MuiChip-deleteIcon').contains(hit)).toBe(true);
+    await userEvent.click(hit);
+    await expect(canvas.getByText('Anna removed')).toBeVisible();
+  },
+};
