@@ -19,6 +19,7 @@ import {
   cardOverrides,
 } from './components/card';
 import { checkboxOverrides } from './components/checkbox';
+import { chipOverrides } from './components/chip';
 import { scheme, stateLayer, typeRoles, typescale, typeVariant, withOpacity } from './m3';
 
 const colorRole = (role) => ({ main: scheme(role), contrastText: scheme(`on-${role}`) });
@@ -111,5 +112,6 @@ export const theme = createTheme({
     MuiCardActions: cardActionsOverrides,
     MuiCardActionArea: cardActionAreaOverrides,
     MuiCheckbox: checkboxOverrides,
+    MuiChip: chipOverrides,
   },
 });
