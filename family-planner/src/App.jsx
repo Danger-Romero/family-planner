@@ -129,7 +129,7 @@ export default function App() {
             />
             <Route
               path="/calendar"
-              element={family ? <CalendarPage /> : <Navigate to="/family" replace />}
+              element={family ? <CalendarPage key={family.id} family={family}/> : <Navigate to="/family" replace />}
             />
             <Route
               path="/plan-week"
