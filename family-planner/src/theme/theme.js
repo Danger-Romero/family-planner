@@ -11,6 +11,15 @@
  */
 import { createTheme } from '@mui/material/styles';
 import { buttonOverrides } from './components/button';
+import {
+  cardActionAreaOverrides,
+  cardActionsOverrides,
+  cardContentOverrides,
+  cardHeaderOverrides,
+  cardOverrides,
+} from './components/card';
+import { checkboxOverrides } from './components/checkbox';
+import { chipOverrides } from './components/chip';
 import { scheme, stateLayer, typeRoles, typescale, typeVariant, withOpacity } from './m3';
 
 const colorRole = (role) => ({ main: scheme(role), contrastText: scheme(`on-${role}`) });
@@ -24,6 +33,9 @@ export const theme = createTheme({
     // [data-theme] element makes them follow a theme set on part of the page, not just <html>.
     rootSelector: ':root, [data-theme]',
   },
+
+  // MUI's own animations (the ripple, among others) stop when the device asks for reduced motion.
+  motion: { reducedMotion: 'system' },
 
   palette: {
     primary: colorRole('primary'),
@@ -94,5 +106,12 @@ export const theme = createTheme({
       },
     },
     MuiButton: buttonOverrides,
+    MuiCard: cardOverrides,
+    MuiCardContent: cardContentOverrides,
+    MuiCardHeader: cardHeaderOverrides,
+    MuiCardActions: cardActionsOverrides,
+    MuiCardActionArea: cardActionAreaOverrides,
+    MuiCheckbox: checkboxOverrides,
+    MuiChip: chipOverrides,
   },
 });
