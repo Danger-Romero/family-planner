@@ -124,6 +124,7 @@ Names are case-sensitive. Parse automatically adds
 | Member | `name` | String |
 | Member | `memberType` | String: `adult` or `child` |
 | Member | `birthDate` | Date; optional |
+| Member | `avatarIcon` | String; optional, an icon name such as `pets`; omit for the initial |
 | Item | `family` | Pointer → Family |
 | Item | `createdBy` | Pointer → Member |
 | Item | `kind` | String: `task` or `event` |
