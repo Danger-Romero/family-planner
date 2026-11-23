@@ -9,7 +9,7 @@ import { addItem, loadItems, setItemCompleted, deleteItem } from "../src/service
 const family = { id: "family1", name: "Our family" };
 const member = {
   id: "member1", family: "family1", user: "owner", name: "Alice",
-  memberType: "adult", birthDate: null, defaultSavedView: null,
+  memberType: "adult", birthDate: null, defaultSavedView: null, avatarIcon: null,
 };
 
 function currentMemberReply(api, row = memberRow()) {
@@ -111,7 +111,7 @@ test("family pages load plain Members, including children without accounts", asy
   const child = {
     ...memberRow("child", "child1"), name: "Zoe",
     birthDate: { __type: "Date", iso: birthDate.toISOString() },
-    defaultSavedView: pointer("SavedView", "view1"),
+    defaultSavedView: pointer("SavedView", "view1"), avatarIcon: "star",
   };
   delete child.user;
   api.reply("GET", "classes/Member", (body) => {
@@ -120,7 +120,7 @@ test("family pages load plain Members, including children without accounts", asy
   });
   assert.deepEqual(await loadMembers(family), [member, {
     id: "child1", family: "family1", user: null, name: "Zoe",
-    memberType: "child", birthDate, defaultSavedView: "view1",
+    memberType: "child", birthDate, defaultSavedView: "view1", avatarIcon: "star",
   }]);
 });
 
@@ -162,11 +162,42 @@ test("an adult can save a child without an account or a user ACL entry", async (
     assert.deepEqual(body.family, pointer("Family", "family1"));
     assert.deepEqual(body.birthDate, { __type: "Date", iso: "2020-05-12T00:00:00.000Z" });
     assert.deepEqual(body.ACL, ownerACL);
+    // The initial is saved without the field, so a database without the column still works.
+    assert.equal("avatarIcon" in body, false);
     return saved("child1");
   });
   assert.deepEqual(await addMember({ name: " Zoe ", memberType: "child", birthDate: "2020-05-12" }), {
     id: "child1", family: "family1", user: null, name: "Zoe",
     memberType: "child", birthDate: new Date("2020-05-12T00:00:00.000Z"), defaultSavedView: null,
+    avatarIcon: null,
+  });
+});
+
+test("an adult can save a member with an avatar icon", async (t) => {
+  const api = session(t);
+  currentMemberReply(api);
+  familyMembersReply(api);
+  api.reply("POST", "classes/Member", (body) => {
+    assert.equal(body.name, "Zoe");
+    assert.equal(body.avatarIcon, "pets");
+    return saved("child1");
+  });
+  const added = await addMember({ name: "Zoe", memberType: "child", avatarIcon: "pets" });
+  assert.equal(added.id, "child1");
+  assert.equal(added.avatarIcon, "pets");
+});
+
+test("saving an icon without the database column explains the missing field", async (t) => {
+  const api = session(t);
+  const failure = new Parse.Error(Parse.Error.OPERATION_FORBIDDEN, "Permission denied for action addField on class Member.");
+  currentMemberReply(api);
+  familyMembersReply(api);
+  api.reply("POST", "classes/Member", () => { throw failure; });
+  await assert.rejects(addMember({ name: "Zoe", memberType: "child", avatarIcon: "pets" }), (error) => {
+    assert.match(error.message, /avatarIcon/);
+    assert.match(error.message, /README/);
+    assert.equal(error.cause, failure);
+    return true;
   });
 });
 
@@ -242,10 +273,12 @@ test("retrying a linked account repairs all sharing without changing its name or
     ...memberRow("child", "bobMember"), name: "Original", user: pointer("_User", "bob"),
   }]);
   sharingReplies(api, "child");
-  const result = await addMember({ name: "Changed", memberType: "adult", username: "Bob" });
+  const result = await addMember({ name: "Changed", memberType: "adult", username: "Bob", avatarIcon: "star" });
   assert.equal(result.id, "bobMember");
   assert.equal(result.name, "Original");
   assert.equal(result.memberType, "child");
+  assert.equal(result.avatarIcon, null);
+  assert.ok(api.calls.every((call) => !JSON.stringify(call.body ?? {}).includes("avatarIcon")));
   assert.ok(api.calls.every((call) => call.path !== "classes/Member" || call.method === "GET"));
 });
 
@@ -454,6 +487,7 @@ test("validation prevents blank input, invalid kinds/dates and cross-family crea
   await assert.rejects(addMember({ name: " ", memberType: "adult" }), /member name/);
   await assert.rejects(addMember({ name: "Zoe", memberType: "admin" }), /adult or child/);
   await assert.rejects(addMember({ name: "Zoe", memberType: "child", birthDate: "2020-02-31" }), /valid birth date/);
+  await assert.rejects(addMember({ name: "Zoe", memberType: "child", avatarIcon: "dragon" }), /avatar icons/);
   await assert.rejects(addItem(family, member, { kind: "task", title: " " }), /title/);
   await assert.rejects(addItem(family, member, { kind: "reminder", title: "Milk" }), /task or event/);
   await assert.rejects(addItem(family, member, { kind: "task", title: "Milk", dueAt: new Date("invalid") }), /due date/);

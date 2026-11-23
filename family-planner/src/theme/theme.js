@@ -10,6 +10,7 @@
  * - the M3 type scale as Typography variants: <Typography variant="titleMedium">.
  */
 import { createTheme } from '@mui/material/styles';
+import { avatarOverrides } from './components/avatar';
 import { buttonOverrides } from './components/button';
 import {
   cardActionAreaOverrides,
@@ -115,5 +116,6 @@ export const theme = createTheme({
     MuiCheckbox: checkboxOverrides,
     MuiChip: chipOverrides,
     MuiFab: fabOverrides,
+    MuiAvatar: avatarOverrides,
   },
 });
