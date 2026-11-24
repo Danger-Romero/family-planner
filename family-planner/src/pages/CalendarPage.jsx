@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import { StandaloneDayView } from "@mui/x-scheduler/day-view";
 import Item from "../components/Item.jsx";
+import MemberCalendar from "../components/MemberCalendar.jsx";
 import { loadItems } from "../services/itemService.js";
 import { loadMembers } from "../services/memberService.js";
 import { loadAssignments } from "../services/assignmentService.js";
@@ -200,25 +200,16 @@ const visibleTasks = visibleItems.filter(
     <section>
       <h3>Events</h3>
 
-     <Box sx={{ display: "flex", gap: 2, overflowX: "auto" }}>
-  {memberCalendars.map(({ member, events }) => (
-    <Box
-      component="section"
-      key={member.id}
-      sx={{ flex: "1 0 280px", minWidth: 280 }}
-    >
-      <h3>{member.name}</h3>
-
-      <Box sx={{ height: 500, width: "100%" }}>
-        <StandaloneDayView
-          events={events}
-          visibleDate={selectedDate}
-          readOnly
-        />
+      <Box sx={{ display: "flex", gap: 2, overflowX: "auto" }}>
+        {memberCalendars.map(({ member, events }) => (
+          <MemberCalendar
+            key={member.id}
+            member={member}
+            events={events}
+            selectedDate={selectedDate}
+          />
+        ))}
       </Box>
-    </Box>
-  ))}
-</Box>
 
 {memberCalendars.length === 0 && (
   <p>No assigned events for this date.</p>
