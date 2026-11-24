@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Item from "../components/Item.jsx";
+import MemberCalendar from "../components/MemberCalendar.jsx";
 import { loadItems } from "../services/itemService.js";
 import { loadMembers } from "../services/memberService.js";
 import { loadAssignments } from "../services/assignmentService.js";
@@ -98,6 +99,35 @@ const visibleItems = items
     return firstDate - secondDate;
   });
 
+  const calendarEvents = visibleItems
+  .filter((item) => item.kind === "event")
+  .map((item) => ({
+    id: item.id,
+    title: item.title,
+    start: item.startsAt.toISOString(),
+    end: (
+      item.endsAt ??
+      new Date(item.startsAt.getTime() + 30 * 60 * 1000) //Events without an end time gets a 30 minute slot
+    ).toISOString(),
+    allDay: item.allDay,
+  }));
+
+  const memberCalendars = members
+  .map((member) => ({
+    member,
+    events: calendarEvents.filter((event) =>
+      assignments.some( //prevents duplicates if a member is both responsible and attending
+        (assignment) =>
+          assignment.item === event.id &&
+          assignment.member === member.id,
+      ),
+    ),
+  }));
+
+const visibleTasks = visibleItems.filter(
+  (item) => item.kind === "task",
+);
+
   return (
     <>
       <h1>Calendar</h1>
@@ -165,21 +195,48 @@ const visibleItems = items
       Try again
     </Button>
   </>
-) : visibleItems.length === 0 ? (
-  <p>No tasks or events for this date.</p>
 ) : (
-  <ul>
-    {visibleItems.map((item) => (
-      <Item
-        key={item.id}
-        item={item}
-        members={members}
-        assignments={assignments.filter(
-          (assignment) => assignment.item === item.id,
-        )}
-      />
-    ))}
-  </ul>
+  <>
+    <section>
+      <h3>Events</h3>
+
+      <Box sx={{ display: "flex", gap: 2, overflowX: "auto" }}>
+        {memberCalendars.map(({ member, events }) => (
+          <MemberCalendar
+            key={member.id}
+            member={member}
+            events={events}
+            selectedDate={selectedDate}
+          />
+        ))}
+      </Box>
+
+{memberCalendars.length === 0 && (
+  <p>No assigned events for this date.</p>
+)}
+    </section>
+
+    <section>
+      <h3>Tasks</h3>
+
+      {visibleTasks.length === 0 ? (
+        <p>No tasks for this date.</p>
+      ) : (
+        <ul>
+          {visibleTasks.map((item) => (
+            <Item
+              key={item.id}
+              item={item}
+              members={members}
+              assignments={assignments.filter(
+                (assignment) => assignment.item === item.id,
+              )}
+            />
+          ))}
+        </ul>
+      )}
+    </section>
+  </>
 )}
     </>
   );
