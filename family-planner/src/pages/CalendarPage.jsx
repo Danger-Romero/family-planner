@@ -17,116 +17,106 @@ export default function CalendarPage({ family }) {
     }),
   );
 
-function isOnDate(item, date) {
-  const start = new Date(date);
-  start.setHours(0, 0, 0, 0);
+  function isOnDate(item, date) {
+    const start = new Date(date);
+    start.setHours(0, 0, 0, 0);
 
-  const end = new Date(start);
-  end.setDate(end.getDate() + 1);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
 
-  if (item.kind === "task") {
-    return Boolean(
-      item.dueAt &&
-      item.dueAt >= start &&
-      item.dueAt < end
-    );
-  }
-
-  if (item.kind === "event" && item.startsAt) {
-    if (!item.endsAt) {
-      return item.startsAt >= start && item.startsAt < end;
+    if (item.kind === "task") {
+      return Boolean(item.dueAt && item.dueAt >= start && item.dueAt < end);
     }
 
-    return item.startsAt < end && item.endsAt > start;
-  }
-
-  return false;
-}
-
-const [selectedDate, setSelectedDate] = useState(() => days[0]);
-const [items, setItems] = useState([]);
-const [members, setMembers] = useState([]);
-const [assignments, setAssignments] = useState([]);
-const [loading, setLoading] = useState(true);
-const [error, setError] = useState("");
-const [reload, setReload] = useState(0);
-
-useEffect(() => {
-  let active = true;
-
-  async function load() {
-    setLoading(true);
-    setError("");
-
-    try {
-      const [loadedItems, loadedMembers] = await Promise.all([
-        loadItems(family),
-        loadMembers(family),
-      ]);
-
-      const loadedAssignments = await loadAssignments(loadedItems);
-
-      if (active) {
-        setItems(loadedItems);
-        setMembers(loadedMembers);
-        setAssignments(loadedAssignments);
+    if (item.kind === "event" && item.startsAt) {
+      if (!item.endsAt) {
+        return item.startsAt >= start && item.startsAt < end;
       }
-    } catch (error) {
-      if (active) {
-        setError(error.message || "Could not load the calendar.");
-      }
-    } finally {
-      if (active) setLoading(false);
+
+      return item.startsAt < end && item.endsAt > start;
     }
+
+    return false;
   }
 
-  load();
+  const [selectedDate, setSelectedDate] = useState(() => days[0]);
+  const [items, setItems] = useState([]);
+  const [members, setMembers] = useState([]);
+  const [assignments, setAssignments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [reload, setReload] = useState(0);
 
-  return () => {
-    active = false;
-  };
-}, [family, reload]);
+  useEffect(() => {
+    let active = true;
 
-const visibleItems = items
-  .filter((item) => isOnDate(item, selectedDate))
-  .sort((first, second) => {
-    const firstDate =
-      first.kind === "task" ? first.dueAt : first.startsAt;
+    async function load() {
+      setLoading(true);
+      setError("");
 
-    const secondDate =
-      second.kind === "task" ? second.dueAt : second.startsAt;
+      try {
+        const [loadedItems, loadedMembers] = await Promise.all([
+          loadItems(family),
+          loadMembers(family),
+        ]);
 
-    return firstDate - secondDate;
-  });
+        const loadedAssignments = await loadAssignments(loadedItems);
+
+        if (active) {
+          setItems(loadedItems);
+          setMembers(loadedMembers);
+          setAssignments(loadedAssignments);
+        }
+      } catch (error) {
+        if (active) {
+          setError(error.message || "Could not load the calendar.");
+        }
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    load();
+
+    return () => {
+      active = false;
+    };
+  }, [family, reload]);
+
+  const visibleItems = items
+    .filter((item) => isOnDate(item, selectedDate))
+    .sort((first, second) => {
+      const firstDate = first.kind === "task" ? first.dueAt : first.startsAt;
+
+      const secondDate =
+        second.kind === "task" ? second.dueAt : second.startsAt;
+
+      return firstDate - secondDate;
+    });
 
   const calendarEvents = visibleItems
-  .filter((item) => item.kind === "event")
-  .map((item) => ({
-    id: item.id,
-    title: item.title,
-    start: item.startsAt.toISOString(),
-    end: (
-      item.endsAt ??
-      new Date(item.startsAt.getTime() + 30 * 60 * 1000) //Events without an end time gets a 30 minute slot
-    ).toISOString(),
-    allDay: item.allDay,
-  }));
+    .filter((item) => item.kind === "event")
+    .map((item) => ({
+      id: item.id,
+      title: item.title,
+      start: item.startsAt.toISOString(),
+      end: (item.endsAt ?? new Date(item.startsAt.getTime() + 30 * 60 * 1000)) //Events without an end time gets a 30 minute slot
+        .toISOString(),
+      allDay: item.allDay,
+    }));
 
-  const memberCalendars = members
-  .map((member) => ({
+  const memberCalendars = members.map((member) => ({
     member,
     events: calendarEvents.filter((event) =>
-      assignments.some( //prevents duplicates if a member is both responsible and attending
+      assignments.some(
+        //prevents duplicates if a member is both responsible and attending
         (assignment) =>
-          assignment.item === event.id &&
-          assignment.member === member.id,
+          assignment.item === event.id && assignment.member === member.id,
       ),
     ),
   }));
 
-const visibleTasks = visibleItems.filter(
-  (item) => item.kind === "task",
-);
+  const visibleTasks = visibleItems.filter((item) => item.kind === "task");
 
   return (
     <>
@@ -183,61 +173,67 @@ const visibleTasks = visibleItems.filter(
       </h2>
 
       {loading ? (
-  <p role="status">Loading the calendar...</p>
-) : error ? (
-  <>
-    <p role="alert">{error}</p>
-    <Button
-      type="button"
-      variant="outlined"
-      onClick={() => setReload((current) => current + 1)}
-    >
-      Try again
-    </Button>
-  </>
-) : (
-  <>
-    <section>
-      <h3>Events</h3>
-
-      <Box sx={{ display: "flex", gap: 2, overflowX: "auto" }}>
-        {memberCalendars.map(({ member, events }) => (
-          <MemberCalendar
-            key={member.id}
-            member={member}
-            events={events}
-            selectedDate={selectedDate}
-          />
-        ))}
-      </Box>
-
-{memberCalendars.length === 0 && (
-  <p>No assigned events for this date.</p>
-)}
-    </section>
-
-    <section>
-      <h3>Tasks</h3>
-
-      {visibleTasks.length === 0 ? (
-        <p>No tasks for this date.</p>
+        <p role="status">Loading the calendar...</p>
+      ) : error ? (
+        <>
+          <p role="alert">{error}</p>
+          <Button
+            type="button"
+            variant="outlined"
+            onClick={() => setReload((current) => current + 1)}
+          >
+            Try again
+          </Button>
+        </>
       ) : (
-        <ul>
-          {visibleTasks.map((item) => (
-            <Item
-              key={item.id}
-              item={item}
-              members={members}
-              assignments={assignments.filter(
-                (assignment) => assignment.item === item.id,
-              )}
-            />
-          ))}
-        </ul>
+        <>
+          <section>
+            <h3>Events</h3>
+
+            <Box
+              sx={{
+                display: "grid",
+                gap: 0.5,
+                gridTemplateColumns: `repeat(${Math.max(memberCalendars.length, 1)}, minmax(0, 1fr))`,
+              }}
+            >
+              {memberCalendars.map(({ member, events }) => (
+                <MemberCalendar
+                  key={member.id}
+                  member={member}
+                  events={events}
+                  selectedDate={selectedDate}
+                />
+              ))}
+            </Box>
+
+            {memberCalendars.length === 0 && (
+              <p>No assigned events for this date.</p>
+            )}
+          </section>
+
+          <section>
+            <h3>Tasks</h3>
+
+            {visibleTasks.length === 0 ? (
+              <p>No tasks for this date.</p>
+            ) : (
+              <ul>
+                {visibleTasks.map((item) => (
+                  <Item
+                    key={item.id}
+                    item={item}
+                    members={members}
+                    assignments={assignments.filter(
+                      (assignment) => assignment.item === item.id,
+                    )}
+                  />
+                ))}
+              </ul>
+            )}
+          </section>
+        </>
       )}
-    </section>
-  </>
-)}
     </>
   );
 }
