@@ -3,7 +3,7 @@
 A React and JavaScript app built with Vite, using Parse/Back4App for accounts
 and shared data. Adults can manage family members, and linked accounts can
 create tasks and events, assign responsible and attending members, complete
-tasks, and view the family overview.
+tasks, and see the family's day on the Today page.
 
 The group uses **one shared Back4App app**. Each member runs the frontend
 locally and connects to that same backend. The [database setup](#shared-database-setup-once-per-group)
@@ -286,7 +286,7 @@ browser interface. Run the live checks above separately.
 ```text
 src/
   App.jsx       # Login session, current member/family, and routes
-  pages/        # Auth, Family, Items, Overview, and Setup pages
+  pages/        # Today, Auth, Family, Items, Overview, and Setup pages
   components/   # Family/member forms, item entries, and assignment forms/fields
   services/     # Parse connection, accounts, families, members, items, assignments, ACLs
 tests/          # Service tests and Parse persistence mock

@@ -16,7 +16,8 @@ import People from "./People.jsx";
 export default function TaskCard({ task, people, now, urgent = false, saving = false, onToggle }) {
   const reason = urgent ? urgencyLabel(task, now) : null;
   const ReasonIcon = reason === "Flagged" ? Flag : Schedule;
-  const when = urgent ? dueLabel(task, now) : `by ${clockTime(task.dueAt)}`;
+  // Urgent: the day or time it's due. Otherwise "by 15:00", or nothing for a task without a date.
+  const when = urgent ? dueLabel(task, now) : task.dueAt ? `by ${clockTime(task.dueAt)}` : "";
 
   return (
     <Card component="li" variant="outlined" color={urgent ? "error" : undefined}>

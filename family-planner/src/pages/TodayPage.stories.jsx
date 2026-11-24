@@ -58,6 +58,26 @@ export const TickATask = {
   },
 };
 
+/** Tasks saved without a date (the add form's default) show under Anytime. */
+export const TasksWithoutADate = {
+  args: {
+    load: fn(async () => ({
+      items: [
+        { ...task('bike', 'Fix the bike light'), manuallyUrgent: false },
+        { ...task('plumber', 'Call the plumber'), manuallyUrgent: false },
+      ],
+      members: sampleMembers,
+      assignments: [],
+    })),
+  },
+  play: async ({ canvas }) => {
+    const anytime = within(await canvas.findByRole('region', { name: 'Anytime' }));
+    await expect(anytime.getAllByRole('heading', { level: 3 }).map((title) => title.textContent)).toEqual([
+      'Call the plumber', 'Fix the bike light',
+    ]);
+  },
+};
+
 /** If saving fails, the tick is taken back and the page says so. */
 export const SaveFails = {
   args: { saveCompleted: fn(async () => { throw new Error('offline'); }) },

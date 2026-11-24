@@ -11,6 +11,7 @@ const plan = planToday(sampleItems, sampleNow);
 
 /** The card (list item) with `title`. */
 const cardOf = (canvas, title) => canvas.getByText(title).closest('li');
+const titlesIn = (section) => section.getAllByRole('listitem').map((item) => item.querySelector('h3').textContent);
 const sectionOf = (canvas, name) => within(canvas.getByRole('region', { name }));
 
 const meta = {
@@ -22,6 +23,7 @@ const meta = {
     now: sampleNow,
     urgent: plan.urgent,
     schedule: plan.schedule,
+    anytime: plan.anytime,
     members: sampleMembers,
     assignments: sampleAssignments,
     savingIds: [],
@@ -39,8 +41,9 @@ const meta = {
           '',
           '1. `TodayPage` (`src/pages/TodayPage.jsx`) loads the items, members and assignments, and saves a',
           '   ticked task.',
-          '2. `planToday()` (`src/services/today.js`) decides what goes in **Urgent** and **Schedule**, in',
-          '   which order. Plain functions, unit-tested in `tests/today.test.js`.',
+          '2. `planToday()` (`src/services/today.js`) decides what goes in **Urgent**, **Schedule** and',
+          '   **Anytime** (tasks without a date), in which order. Plain functions, unit-tested in',
+          '   `tests/today.test.js`.',
           '3. `TodayView` lays out the header, the two sections and the "+".',
           '4. `TaskCard` and `EventCard` draw one item each; `People` draws who is responsible and attending.',
           '5. They are built from the themed MUI components (Card, Checkbox, Avatar, FAB), so the look comes',
@@ -101,6 +104,14 @@ export const Default = {
     await expect(within(cardOf(canvas, 'Pack football kit')).getByText('by 15:00')).toBeInTheDocument();
     await expect(within(cardOf(canvas, 'Buy groceries for the week')).getByText('No one responsible')).toBeInTheDocument();
 
+    // Anytime: tasks without a date, by title, with no time and no error outline.
+    const anytime = sectionOf(canvas, 'Anytime');
+    await expect(titlesIn(anytime)).toEqual(['Call the plumber', 'Fix the bike light']);
+    const bike = cardOf(canvas, 'Fix the bike light');
+    await expect(within(bike).queryByText(/^by /)).toBeNull();
+    await expect(within(bike).getByRole('img', { name: 'Theo' })).toBeInTheDocument();
+    await expect(getComputedStyle(bike).borderTopWidth).toBe('1px');
+
     // A done task is ticked and crossed out.
     const plants = within(cardOf(canvas, 'Water the plants'));
     await expect(plants.getByRole('checkbox', { name: 'Done: Water the plants' })).toBeChecked();
@@ -122,17 +133,28 @@ export const Default = {
 export const LastCardClearOfTheFab = {
   play: async ({ canvas }) => {
     window.scrollTo(0, document.documentElement.scrollHeight);
-    const last = cardOf(canvas, 'Buy groceries for the week').getBoundingClientRect();
+    const last = cardOf(canvas, 'Fix the bike light').getBoundingClientRect();
     const add = canvas.getByRole('link', { name: 'New task or event' }).getBoundingClientRect();
     await expect(last.bottom).toBeLessThanOrEqual(add.top);
   },
 };
 
-/** Nothing urgent and nothing planned. */
-export const Empty = {
-  args: { urgent: [], schedule: [] },
+/** Tasks without a date and nothing else: they still show, under Anytime. */
+export const OnlyTasksWithoutADate = {
+  args: planToday(sampleItems.filter((item) => item.kind === 'task' && !item.dueAt), sampleNow),
   play: async ({ canvas }) => {
     await expect(canvas.queryByRole('region', { name: 'Urgent' })).toBeNull();
+    await expect(sectionOf(canvas, 'Schedule').getByText('Nothing planned for today.')).toBeInTheDocument();
+    await expect(titlesIn(sectionOf(canvas, 'Anytime'))).toEqual(['Call the plumber', 'Fix the bike light']);
+  },
+};
+
+/** Nothing urgent, nothing planned and nothing without a date. */
+export const Empty = {
+  args: { urgent: [], schedule: [], anytime: [] },
+  play: async ({ canvas }) => {
+    await expect(canvas.queryByRole('region', { name: 'Urgent' })).toBeNull();
+    await expect(canvas.queryByRole('region', { name: 'Anytime' })).toBeNull();
     await expect(sectionOf(canvas, 'Schedule').getByText('Nothing planned for today.')).toBeInTheDocument();
   },
 };

@@ -79,11 +79,21 @@ test("planToday puts urgent tasks first and today's other items in time order", 
     task("forgot", { dueAt: at(18, 0, 18) }),
     task("someday"),
     task("flagged someday", { manuallyUrgent: true }),
+    task("old chore", { completed: true }),
   ];
   const plan = planToday(items, now);
   assert.deepEqual(plan.urgent.map((item) => item.id), ["forgot", "sign up", "pay", "flagged someday"]);
   assert.deepEqual(plan.schedule.map((item) => item.id),
     ["holiday", "night", "school run", "done", "pack kit", "football", "dentist", "groceries"]);
+  // Unfinished tasks without a date: they have no day, so they're always on Today.
+  assert.deepEqual(plan.anytime.map((item) => item.id), ["someday"]);
+});
+
+test("tasks without a date are listed under anytime, by title", () => {
+  const plan = planToday([task("Water plants"), task("Fix bike light"), task("Done", { completed: true })], now);
+  assert.deepEqual(plan.anytime.map((item) => item.id), ["Fix bike light", "Water plants"]);
+  assert.deepEqual(plan.urgent, []);
+  assert.deepEqual(plan.schedule, []);
 });
 
 test("items at the same time are in title order", () => {

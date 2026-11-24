@@ -119,14 +119,14 @@ export default function App() {
             <Route
               path="/"
               element={family
-                ? <OverviewPage key={family.id} family={family} />
+                ? <TodayPage key={family.id} family={family} />
                 : <Navigate to="/family" replace />}
             />
-            {/* The new Today page, here while it's being built; "/" still shows the Overview. */}
+            {/* The old Overview, no longer in the navigation; kept until it's merged into Today. */}
             <Route
-              path="/today"
+              path="/overview"
               element={family
-                ? <TodayPage key={family.id} family={family} />
+                ? <OverviewPage key={family.id} family={family} />
                 : <Navigate to="/family" replace />}
             />
             <Route

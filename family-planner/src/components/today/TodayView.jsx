@@ -34,13 +34,13 @@ function Section({ title, items, renderItem, empty }) {
 }
 
 /**
- * The Today page as it looks: the header, the Urgent and Schedule sections and the "+".
+ * The Today page as it looks: the header, the Urgent, Schedule and Anytime sections and the "+".
  * It only draws what it's given; TodayPage loads the data and planToday (services/today.js)
  * decides what goes where. `savingIds` are tasks whose tick is being saved; `onToggle(task, done)`
  * is called when a task is ticked or unticked.
  */
 export default function TodayView({
-  familyName, now, urgent, schedule, members, assignments, savingIds = [], error = "", onToggle,
+  familyName, now, urgent, schedule, anytime = [], members, assignments, savingIds = [], error = "", onToggle,
 }) {
   const card = (urgentSection) => (item) => {
     const people = peopleOf(item.id, assignments, members);
@@ -84,6 +84,7 @@ export default function TodayView({
 
       <Section title="Urgent" items={urgent} renderItem={card(true)} />
       <Section title="Schedule" items={schedule} renderItem={card(false)} empty="Nothing planned for today." />
+      <Section title="Anytime" items={anytime} renderItem={card(false)} />
 
       <Fab
         component={Link}

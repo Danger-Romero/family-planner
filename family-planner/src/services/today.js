@@ -104,10 +104,11 @@ function timeInDay(item, now) {
 const byTitle = (first, second) => first.title.localeCompare(second.title);
 
 /**
- * The two sections of the Today page:
+ * The three sections of the Today page:
  * - `urgent`: urgent tasks (see isUrgent), overdue and soonest first, flagged ones without a date last;
- * - `schedule`: the day's other tasks and events, all-day events first, then in time order.
- * Done tasks stay in the schedule (crossed out); tasks without a date only show when urgent.
+ * - `schedule`: the day's other tasks and events, all-day events first, then in time order;
+ * - `anytime`: unfinished tasks without a date, by title. They belong to no day, so they're on every one.
+ * Done tasks stay in the schedule (crossed out). Tasks due on a later day aren't on Today.
  */
 export function planToday(items, now) {
   const urgent = items
@@ -117,7 +118,10 @@ export function planToday(items, now) {
   const schedule = items
     .filter((item) => !isUrgent(item, now) && isOnDay(item, now))
     .sort((first, second) => timeInDay(first, now) - timeInDay(second, now) || byTitle(first, second));
-  return { urgent, schedule };
+  const anytime = items
+    .filter((item) => item.kind === "task" && !item.completed && !item.dueAt && !isUrgent(item, now))
+    .sort(byTitle);
+  return { urgent, schedule, anytime };
 }
 
 /** An item's people: { responsible: [members], attending: [members] }, each by name. */

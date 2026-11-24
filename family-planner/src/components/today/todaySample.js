@@ -28,6 +28,9 @@ export const sampleItems = [
   item("football", { kind: "event", title: "Football practice", startsAt: at(15, 30), endsAt: at(16, 30) }),
   item("dentist", { kind: "event", title: "Dentist", startsAt: at(16), endsAt: at(16, 45) }),
   item("groceries", { kind: "task", title: "Buy groceries for the week", dueAt: at(19) }),
+  // Without a date: these go under "Anytime".
+  item("bike", { kind: "task", title: "Fix the bike light" }),
+  item("plumber", { kind: "task", title: "Call the plumber" }),
 ];
 
 const role = (itemId, member, roleName) => ({ id: `${itemId}-${member}-${roleName}`, item: itemId, member, role: roleName });
@@ -44,4 +47,6 @@ export const sampleAssignments = [
   role("football", "ella", "attending"),
   role("dentist", "jonas", "responsible"),
   role("dentist", "theo", "attending"),
+  role("bike", "theo", "responsible"),
+  role("plumber", "anna", "responsible"),
 ];

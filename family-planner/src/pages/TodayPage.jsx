@@ -16,7 +16,8 @@ async function loadToday(family) {
 
 /**
  * The Today page. It loads the family's items, members and assignments, lets planToday
- * (services/today.js) decide what's urgent and what's on the schedule, and saves a ticked task.
+ * (services/today.js) decide what's urgent, what's on the schedule and which tasks have no date,
+ * and saves a ticked task.
  * TodayView draws it.
  *
  * Which section an item is in is worked out once, when the page loads: a ticked urgent task stays
@@ -49,6 +50,7 @@ export default function TodayPage({ family, load = loadToday, saveCompleted = se
           // Ids, so the items themselves can change (ticked) without moving.
           urgent: plan.urgent.map((item) => item.id),
           schedule: plan.schedule.map((item) => item.id),
+          anytime: plan.anytime.map((item) => item.id),
         });
       } catch (error) {
         if (active) setLoadError(error.message || "Could not load today. Please try again.");
@@ -107,6 +109,7 @@ export default function TodayPage({ family, load = loadToday, saveCompleted = se
       now={data.now}
       urgent={data.urgent.map((id) => byId.get(id))}
       schedule={data.schedule.map((id) => byId.get(id))}
+      anytime={data.anytime.map((id) => byId.get(id))}
       members={data.members}
       assignments={data.assignments}
       savingIds={savingIds}
