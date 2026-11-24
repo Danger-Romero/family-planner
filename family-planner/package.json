@@ -6,7 +6,8 @@
   "scripts": {
     "tokens": "node scripts/build-tokens.js",
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node -e \"require('fs').copyFileSync('dist/index.html', 'dist/404.html')\"",
+    "deploy": "npm run build && gh-pages -d dist",
     "lint": "oxlint",
     "test": "node --test tests/*.test.js",
     "preview": "vite preview",
@@ -40,6 +41,7 @@
     "@vitejs/plugin-react": "^6.1.2",
     "@vitest/browser-playwright": "latest",
     "@vitest/coverage-v8": "latest",
+    "gh-pages": "^6.3.0",
     "oxlint": "^1.90.0",
     "playwright": "latest",
     "prop-types": "latest",
