@@ -126,23 +126,67 @@ export function planToday(items, now) {
   return { urgent, schedule, anytime };
 }
 
-/** "2026-10-19T15:00": a date as the value of a datetime-local field, in local time. "" for no date. */
-export function dateTimeInput(date) {
+/** "2026-10-19": the day of a date as the value of a date field, in local time. "" for no date. */
+export function dateInput(date) {
   if (!date) return "";
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${clockTime(date)}`;
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+/** "15:00": the time of a date as the value of a time field. "" for no date. */
+export const timeInput = (date) => (date ? clockTime(date) : "");
+
+/**
+ * Who is involved in an item, from its assignments: { [member id]: "responsible" | "attending" }.
+ * Members who aren't involved are left out. One role each: someone stored with both is responsible.
+ */
+export function rolesOf(assignments) {
+  const roles = {};
+  for (const { member, role } of assignments) {
+    if (role === "responsible" || !roles[member]) roles[member] = role;
+  }
+  return roles;
+}
+
+/** A date field's and a time field's values as a Date in local time, or null if they aren't valid. */
+function dateAt(date, time) {
+  const value = new Date(`${date}T${time}`);
+  return Number.isNaN(value.getTime()) ? null : value;
 }
 
 /**
- * The task dialog's fields ({ title, due, flagged, assignments }, `due` as a datetime-local value)
- * as the values to save: { values: { title, dueAt, manuallyUrgent, assignments } }, or
- * { error } saying what to fix. An empty `due` is a task without a date.
+ * The item dialog's fields as the values to save, or { error } saying what to fix.
+ *
+ * The fields are { kind, title, date, time, starts, ends, allDay, important, roles }: `date` as a
+ * date field's value ("2026-10-19"), `time`, `starts` and `ends` as time fields' ("15:00"), and
+ * `roles` as from rolesOf.
+ * - A task is due on `date` at `time` (the end of the day without a time), or has no date.
+ *   Gives { values: { kind, title, dueAt, manuallyUrgent, assignments } }.
+ * - An event is on `date`, from `starts` to `ends` (no end without one), or all day.
+ *   Gives { values: { kind, title, startsAt, endsAt, allDay, assignments } }.
  */
-export function readTaskForm({ title, due, flagged, assignments }) {
+export function readItemForm({ kind, title, date, time, starts, ends, allDay, important, roles }) {
   if (!title.trim()) return { error: "Enter a title." };
-  // A datetime-local value without an offset is read as local time.
-  const dueAt = due ? new Date(due) : null;
-  if (dueAt && Number.isNaN(dueAt.getTime())) return { error: "Enter a valid due date and time." };
-  return { values: { title: title.trim(), dueAt, manuallyUrgent: flagged, assignments } };
+  const assignments = Object.entries(roles).map(([member, role]) => ({ member, role }));
+  const values = { kind, title: title.trim() };
+
+  if (kind === "task") {
+    const dueAt = date ? dateAt(date, time || "23:59") : null;
+    if (date && !dueAt) return { error: "Enter a valid date and deadline." };
+    return { values: { ...values, dueAt, manuallyUrgent: important, assignments } };
+  }
+
+  if (!date) return { error: "Pick the day of the event." };
+  if (allDay) {
+    const startsAt = dateAt(date, "00:00");
+    if (!startsAt) return { error: "Enter a valid date." };
+    return { values: { ...values, startsAt, endsAt: null, allDay: true, assignments } };
+  }
+  if (!starts) return { error: "Enter when the event starts." };
+  const startsAt = dateAt(date, starts);
+  const endsAt = ends ? dateAt(date, ends) : null;
+  if (!startsAt || (ends && !endsAt)) return { error: "Enter a valid date and time." };
+  if (endsAt && endsAt <= startsAt) return { error: "The event has to end after it starts." };
+  return { values: { ...values, startsAt, endsAt, allDay: false, assignments } };
 }
 
 /** An item's people: { responsible: [members], attending: [members] }, each by name. */

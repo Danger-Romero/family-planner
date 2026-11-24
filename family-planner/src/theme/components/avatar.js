@@ -4,17 +4,20 @@
  *
  * `<Avatar role="img" aria-label="Anna">A</Avatar>` (responsible) or
  * `<Avatar variant="outlined" role="img" aria-label="Ella">E</Avatar>` (attending), with an initial
- * or an icon inside. For a family member, use `MemberAvatar` (src/components/MemberAvatar.jsx).
- * Filled vs outlined is only visible: give every avatar `role="img"` and an `aria-label`.
+ * or an icon inside; `variant="dashed"` is someone who isn't involved, when picking who is. For a
+ * family member, use `MemberAvatar` (src/components/MemberAvatar.jsx).
+ * The variants are only visible: give every avatar `role="img"` and an `aria-label`.
  *
  * | `variant`                 | Look                                                   |
  * | ------------------------- | ------------------------------------------------------ |
  * | default (and any other)   | `primary` fill and edge, `on-primary` initial or icon  |
  * | `outlined`                | `primary` edge, no fill, `primary` initial or icon     |
+ * | `dashed`                  | dashed `outline` edge, no fill, `on-surface-variant`   |
  *
- * One size, 28×28px, always round (MUI's `rounded` and `square` look like the default). M3 has no
- * avatar component of its own; this follows the Today wireframe. The strong `primary` fill (not
- * `primary-container`) keeps filled and outlined easy to tell apart.
+ * 28×28px (a list of people can make it larger with `sx`), always round (MUI's `rounded` and
+ * `square` look like the default). M3 has no avatar component of its own; this follows the Today
+ * wireframe. The strong `primary` fill (not `primary-container`) keeps filled and outlined easy to
+ * tell apart.
  */
 import { scheme, typescale } from '../m3';
 
@@ -41,6 +44,12 @@ export const avatarOverrides = {
         backgroundColor: 'transparent',
         color: scheme('primary'),
       },
+      '&.MuiAvatar-dashed': {
+        borderStyle: 'dashed',
+        borderColor: scheme('outline'),
+        backgroundColor: 'transparent',
+        color: scheme('on-surface-variant'),
+      },
 
       // Windows High Contrast repaints fills and text in system colours, which would make both
       // roles look alike. Keep the filled one filled, in the system's text colour. (The whole
@@ -51,6 +60,7 @@ export const avatarOverrides = {
         backgroundColor: 'CanvasText',
         color: 'Canvas',
         '&.MuiAvatar-outlined': { backgroundColor: 'transparent', color: 'CanvasText' },
+        '&.MuiAvatar-dashed': { borderStyle: 'dashed', backgroundColor: 'transparent', color: 'CanvasText' },
       },
     },
   },

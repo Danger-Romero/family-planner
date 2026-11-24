@@ -31,8 +31,6 @@ const destinations = [
 function destinationForPath(pathname) {
   // Only the first part of the path counts: '/family/' and '/calendar/2026' match their tab.
   const section = `/${pathname.split('/')[1]}`;
-  // Items will become part of Today.
-  if (section === '/items') return 'today';
   return destinations.find(({ to }) => to === section)?.value ?? null;
 }
 

@@ -4,7 +4,7 @@ import { Parse, session, timestamp, pointer, saved, familyRow, memberRow, itemRo
 import { currentUser, signUp, logIn, logOut } from "../src/services/authService.js";
 import { createFamily, loadFamily } from "../src/services/familyService.js";
 import { loadCurrentMember, loadMembers, addMember } from "../src/services/memberService.js";
-import { addItem, loadItems, setItemCompleted, deleteItem, updateTask } from "../src/services/itemService.js";
+import { addItem, loadItems, setItemCompleted, deleteItem, updateItem } from "../src/services/itemService.js";
 
 const family = { id: "family1", name: "Our family" };
 const member = {
@@ -485,7 +485,28 @@ test("a new task can be flagged as urgent", async (t) => {
   assert.equal(task.manuallyUrgent, true);
 });
 
-test("updateTask saves a task's title, due date and flag, and can remove the due date", async (t) => {
+test("a new event can last all day; a task can't", async (t) => {
+  const api = session(t);
+  const day = new Date(2026, 10, 6);
+  familyMembersReply(api);
+  api.reply("POST", "classes/Item", (body) => {
+    assert.equal(body.allDay, true);
+    assert.deepEqual(body.startsAt, { __type: "Date", iso: day.toISOString() });
+    assert.equal(body.endsAt, undefined);
+    return saved("event1");
+  });
+  const event = await addItem(family, member, { kind: "event", title: "School trip", startsAt: day, allDay: true });
+  assert.equal(event.allDay, true);
+
+  familyMembersReply(api);
+  api.reply("POST", "classes/Item", (body) => {
+    assert.equal(body.allDay, false);
+    return saved("task1");
+  });
+  await addItem(family, member, { kind: "task", title: "Pack", allDay: true });
+});
+
+test("updateItem saves a task's title, due date and flag, and can remove the due date", async (t) => {
   const api = session(t);
   const due = new Date("2026-11-06T15:00:00.000Z");
   api.reply("GET", "classes/Item", (body) => {
@@ -498,7 +519,7 @@ test("updateTask saves a task's title, due date and flag, and can remove the due
     });
     return { updatedAt: timestamp };
   });
-  const task = await updateTask("item1", { title: " Buy oat milk ", dueAt: due, manuallyUrgent: true });
+  const task = await updateItem("item1", { kind: "task", title: " Buy oat milk ", dueAt: due, manuallyUrgent: true });
   assert.equal(task.id, "item1");
   assert.equal(task.kind, "task");
   assert.equal(task.family, "family1");
@@ -511,18 +532,53 @@ test("updateTask saves a task's title, due date and flag, and can remove the due
     assert.deepEqual(body, { title: "Milk", manuallyUrgent: false, dueAt: { __op: "Delete" } });
     return { updatedAt: timestamp };
   });
-  const undated = await updateTask("item1", { title: "Milk", dueAt: null, manuallyUrgent: false });
+  const undated = await updateItem("item1", { kind: "task", title: "Milk", dueAt: null, manuallyUrgent: false });
   assert.equal(undated.dueAt, null);
   assert.equal(undated.manuallyUrgent, false);
 });
 
-test("updateTask checks its input before any request and edits only tasks", async (t) => {
+test("updateItem saves an event's title, start, end and all day, and can remove the end", async (t) => {
   const api = session(t);
-  await assert.rejects(updateTask("item1", { title: " " }), /title/);
-  await assert.rejects(updateTask("item1", { title: "Milk", dueAt: new Date("invalid") }), /due date/);
+  const start = new Date("2026-11-06T17:00:00.000Z");
+  const end = new Date("2026-11-06T18:00:00.000Z");
+  const eventRow = { ...itemRow("event1"), kind: "event", startsAt: { __type: "Date", iso: start.toISOString() } };
+  api.reply("GET", "classes/Item", { results: [eventRow] });
+  api.reply("PUT", "classes/Item/event1", (body) => {
+    assert.deepEqual(body, {
+      title: "Dinner", allDay: false,
+      startsAt: { __type: "Date", iso: start.toISOString() }, endsAt: { __type: "Date", iso: end.toISOString() },
+    });
+    return { updatedAt: timestamp };
+  });
+  const event = await updateItem("event1", { kind: "event", title: "Dinner", startsAt: start, endsAt: end, allDay: false });
+  assert.equal(event.endsAt.getTime(), end.getTime());
+
+  api.reply("GET", "classes/Item", { results: [{ ...eventRow, endsAt: { __type: "Date", iso: end.toISOString() } }] });
+  api.reply("PUT", "classes/Item/event1", (body) => {
+    assert.deepEqual(body, {
+      title: "Dinner", allDay: true, startsAt: { __type: "Date", iso: start.toISOString() }, endsAt: { __op: "Delete" },
+    });
+    return { updatedAt: timestamp };
+  });
+  const allDay = await updateItem("event1", { kind: "event", title: "Dinner", startsAt: start, endsAt: null, allDay: true });
+  assert.equal(allDay.allDay, true);
+  assert.equal(allDay.endsAt, null);
+});
+
+test("updateItem checks its input before any request and doesn't change a task into an event", async (t) => {
+  const api = session(t);
+  const start = new Date("2026-11-06T17:00:00.000Z");
+  await assert.rejects(updateItem("item1", { kind: "task", title: " " }), /title/);
+  await assert.rejects(updateItem("item1", { title: "Milk" }), /task or event/);
+  await assert.rejects(updateItem("item1", { kind: "task", title: "Milk", dueAt: new Date("invalid") }), /due date/);
+  await assert.rejects(updateItem("item1", { kind: "event", title: "Dinner" }), /event start/);
+  await assert.rejects(
+    updateItem("item1", { kind: "event", title: "Dinner", startsAt: start, endsAt: start }),
+    /end must be after its start/,
+  );
   assert.equal(api.calls.length, 0);
-  api.reply("GET", "classes/Item", { results: [{ ...itemRow("event1"), kind: "event" }] });
-  await assert.rejects(updateTask("event1", { title: "Dinner" }), /Only tasks/);
+  api.reply("GET", "classes/Item", { results: [itemRow()] });
+  await assert.rejects(updateItem("item1", { kind: "event", title: "Dinner", startsAt: start }), /task can't become an event/);
   assert.ok(api.calls.every((call) => call.method === "GET"));
 });
 

@@ -37,6 +37,20 @@ function validDate(value) {
   return value instanceof Date && !Number.isNaN(value.getTime());
 }
 
+/** Checks a task's due date or an event's start and end. Throws what to fix. */
+function checkTimes(kind, { dueAt = null, startsAt = null, endsAt = null }) {
+  if (kind === "task") {
+    if (dueAt != null && !validDate(dueAt)) throw new Error("Enter a valid task due date.");
+    if (startsAt != null || endsAt != null) throw new Error("Tasks use a due date.");
+  } else {
+    if (!validDate(startsAt)) throw new Error("Enter a valid event start.");
+    if (dueAt != null) throw new Error("Events use start and end times.");
+    if (endsAt != null && (!validDate(endsAt) || endsAt <= startsAt)) {
+      throw new Error("The event end must be after its start.");
+    }
+  }
+}
+
 export async function addItem(family, member, values) {
   if (typeof values.title !== "string" || !values.title.trim()) {
     throw new Error("Enter a title.");
@@ -48,17 +62,8 @@ export async function addItem(family, member, values) {
     throw new Error("Choose a member from your family.");
   }
 
-  const { kind, dueAt = null, startsAt = null, endsAt = null } = values;
-  if (kind === "task") {
-    if (dueAt != null && !validDate(dueAt)) throw new Error("Enter a valid task due date.");
-    if (startsAt != null || endsAt != null) throw new Error("Tasks use a due date.");
-  } else {
-    if (!validDate(startsAt)) throw new Error("Enter a valid event start.");
-    if (dueAt != null) throw new Error("Events use start and end times.");
-    if (endsAt != null && (!validDate(endsAt) || endsAt <= startsAt)) {
-      throw new Error("The event end must be after its start.");
-    }
-  }
+  const { kind } = values;
+  checkTimes(kind, values);
 
   const user = Parse.User.current();
   if (!user) throw new Error("Log in before adding an item.");
@@ -75,7 +80,7 @@ export async function addItem(family, member, values) {
     title: values.title.trim(),
     note: "",
     completed: false,
-    allDay: false,
+    allDay: kind === "event" && values.allDay === true,
     manuallyUrgent: values.manuallyUrgent === true,
     visibility: "everyone",
   });
@@ -87,18 +92,31 @@ export async function addItem(family, member, values) {
 }
 
 /**
- * Saves a task's title, due date (`null`: no date) and flag. Returns the saved task.
- * Who is responsible and attending is saved separately (saveAssignments).
+ * Saves the changes to a task (its title, `dueAt`, `null` for no date, and `manuallyUrgent`) or an
+ * event (its title, `startsAt`, `endsAt`, `null` for no end, and `allDay`). `values.kind` is the
+ * item's kind: a task can't become an event. Returns the saved item. Who is responsible and
+ * attending is saved separately (saveAssignments).
  */
-export async function updateTask(id, { title, dueAt = null, manuallyUrgent = false }) {
+export async function updateItem(id, values) {
+  const { kind, title } = values;
   if (typeof title !== "string" || !title.trim()) throw new Error("Enter a title.");
-  if (dueAt != null && !validDate(dueAt)) throw new Error("Enter a valid task due date.");
+  if (!["task", "event"].includes(kind)) throw new Error("Choose task or event.");
+  checkTimes(kind, values);
 
   const item = await new Parse.Query(Item).get(id);
-  if (item.get("kind") !== "task") throw new Error("Only tasks can be edited here.");
-  item.set({ title: title.trim(), manuallyUrgent: manuallyUrgent === true });
-  if (dueAt) item.set("dueAt", dueAt);
-  else item.unset("dueAt");
+  if (item.get("kind") !== kind) {
+    throw new Error(kind === "event" ? "A task can't become an event." : "An event can't become a task.");
+  }
+  const setDate = (field, date) => (date ? item.set(field, date) : item.unset(field));
+  item.set("title", title.trim());
+  if (kind === "task") {
+    item.set("manuallyUrgent", values.manuallyUrgent === true);
+    setDate("dueAt", values.dueAt);
+  } else {
+    item.set("allDay", values.allDay === true);
+    setDate("startsAt", values.startsAt);
+    setDate("endsAt", values.endsAt);
+  }
   return toItem(await item.save());
 }
 

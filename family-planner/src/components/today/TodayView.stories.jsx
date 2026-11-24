@@ -33,10 +33,11 @@ const meta = {
     anytime: plan.anytime,
     members: sampleMembers,
     assignments: sampleAssignments,
+    memberId: 'anna',
     savingIds: [],
     error: '',
     onToggle: fn(),
-    onSaveTask: fn(async () => {}),
+    onSaveItem: fn(async () => {}),
   },
   globals: { viewport: { value: 'mobile2', isRotated: false } },
   parameters: {
@@ -54,8 +55,8 @@ const meta = {
           '   `tests/today.test.js`.',
           '3. `TodayView` lays out the header, the sections and the "+".',
           '4. `TaskCard` and `EventCard` draw one item each; `People` draws who is responsible and attending.',
-          '   A task card is one big button: tapping it opens `TaskDialog` to change the task. The "+" opens',
-          '   the same dialog for a new task.',
+          '   A task card is one big button: tapping it opens `ItemDialog` to change the task. The "+" opens',
+          '   the same dialog to add a task or an event.',
           '5. They are built from the themed MUI components (Card, Checkbox, Avatar, FAB), so the look comes',
           '   from `src/theme` and the components don\'t set colours of their own.',
           '',
@@ -132,7 +133,7 @@ export const Default = {
     await expect(args.onToggle).toHaveBeenCalledWith(expect.objectContaining({ id: 'kit' }), true);
 
     // The "+" sits 16px above the navigation bar.
-    const add = canvas.getByRole('button', { name: 'New task' });
+    const add = canvas.getByRole('button', { name: 'New task or event' });
     const nav = canvas.getByRole('navigation', { name: 'Main navigation' }).getBoundingClientRect();
     await expect(nav.top - add.getBoundingClientRect().bottom).toBeCloseTo(16, 0);
   },
@@ -143,13 +144,13 @@ export const LastCardClearOfTheFab = {
   play: async ({ canvas }) => {
     window.scrollTo(0, document.documentElement.scrollHeight);
     const last = cardOf(canvas, 'Fix the bike light').getBoundingClientRect();
-    const add = canvas.getByRole('button', { name: 'New task' }).getBoundingClientRect();
+    const add = canvas.getByRole('button', { name: 'New task or event' }).getBoundingClientRect();
     await expect(last.bottom).toBeLessThanOrEqual(add.top);
   },
 };
 
 /**
- * The whole task card is a button that opens the task dialog with the task filled in. Only the
+ * The whole task card is a button that opens the item dialog with the task filled in. Only the
  * checkbox on it does something else. Saving hands the changes to the page and closes the dialog.
  */
 export const EditATask = {
@@ -180,9 +181,9 @@ export const EditATask = {
     await expect(title).toHaveValue('Pack football kit');
     await userEvent.type(title, ' and boots');
     await userEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
-    await expect(args.onSaveTask).toHaveBeenCalledWith(
+    await expect(args.onSaveItem).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'kit' }),
-      { title: 'Pack football kit and boots', dueAt: new Date(2026, 9, 19, 15), manuallyUrgent: false,
+      { kind: 'task', title: 'Pack football kit and boots', dueAt: new Date(2026, 9, 19, 15), manuallyUrgent: false,
         assignments: [{ member: 'ella', role: 'responsible' }] },
     );
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
@@ -190,16 +191,17 @@ export const EditATask = {
   },
 };
 
-/** The "+" opens the same dialog, empty, for a new task. */
+/** The "+" opens the same dialog, empty, to add a task or an event. */
 export const NewTask = {
   play: async ({ args, canvas, canvasElement, userEvent }) => {
-    await userEvent.click(canvas.getByRole('button', { name: 'New task' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'New task or event' }));
     const screen = page(canvasElement);
     const dialog = await screen.findByRole('dialog', { name: 'New task' });
+    await expect(within(dialog).getByRole('group', { name: 'Task or event' })).toBeInTheDocument();
     await userEvent.type(within(dialog).getByRole('textbox', { name: 'Title' }), 'Buy birthday present');
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Add task' }));
-    await expect(args.onSaveTask).toHaveBeenCalledWith(null, {
-      title: 'Buy birthday present', dueAt: null, manuallyUrgent: false, assignments: [],
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+    await expect(args.onSaveItem).toHaveBeenCalledWith(null, {
+      kind: 'task', title: 'Buy birthday present', dueAt: null, manuallyUrgent: false, assignments: [],
     });
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   },
@@ -210,24 +212,28 @@ export const NewTask = {
  * task, so saving again doesn't add it twice.
  */
 export const NewTaskSavedWithoutItsPeople = {
-  args: { onSaveTask: fn() },
+  args: { onSaveItem: fn() },
   beforeEach: ({ args }) => {
     const saved = { ...sampleItems.find((item) => item.id === 'bike'), id: 'new', title: 'Buy birthday present' };
-    const failure = Object.assign(new Error('"Buy birthday present" was saved, but not who\'s responsible and attending. Try again.'), { task: saved });
-    args.onSaveTask.mockRejectedValueOnce(failure).mockResolvedValue();
+    const failure = Object.assign(new Error('"Buy birthday present" was saved, but not who\'s responsible and attending. Try again.'), { item: saved });
+    args.onSaveItem.mockRejectedValueOnce(failure).mockResolvedValue();
   },
   play: async ({ args, canvas, canvasElement, userEvent }) => {
-    await userEvent.click(canvas.getByRole('button', { name: 'New task' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'New task or event' }));
     const screen = page(canvasElement);
     const dialog = await screen.findByRole('dialog', { name: 'New task' });
     await userEvent.type(within(dialog).getByRole('textbox', { name: 'Title' }), 'Buy birthday present');
-    await userEvent.click(within(within(dialog).getByRole('group', { name: 'Responsible' })).getByRole('checkbox', { name: 'Anna' }));
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Add task' }));
+    await userEvent.click(within(dialog).getByRole('button', { name: /^People/ }));
+    await userEvent.click(within(screen.getByRole('group', { name: "Anna's role" })).getByRole('button', { name: 'Responsible' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Done' }));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
 
     await expect(await within(dialog).findByRole('alert')).toHaveTextContent('was saved, but not who\'s responsible');
     await expect(dialog).toHaveAccessibleName('Edit task');
+    // A task can't become an event any more.
+    await expect(within(dialog).queryByRole('group', { name: 'Task or event' })).toBeNull();
     await userEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
-    await expect(args.onSaveTask).toHaveBeenLastCalledWith(
+    await expect(args.onSaveItem).toHaveBeenLastCalledWith(
       expect.objectContaining({ id: 'new' }),
       expect.objectContaining({ assignments: [{ member: 'anna', role: 'responsible' }] }),
     );

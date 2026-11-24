@@ -7,7 +7,6 @@ import AuthPage from "./pages/AuthPage.jsx";
 import CalendarPage from "./pages/CalendarPage.jsx";
 import FamilyPage from "./pages/FamilyPage.jsx";
 import OverviewPage from "./pages/OverviewPage.jsx";
-import ItemsPage from "./pages/ItemsPage.jsx";
 import PlanWeekPage from "./pages/PlanWeekPage.jsx";
 import SetupPage from "./pages/SetupPage.jsx";
 import TodayPage from "./pages/TodayPage.jsx";
@@ -127,12 +126,6 @@ export default function App() {
               path="/overview"
               element={family
                 ? <OverviewPage key={family.id} family={family} />
-                : <Navigate to="/family" replace />}
-            />
-            <Route
-              path="/items"
-              element={family
-                ? <ItemsPage key={family.id} family={family} member={member} />
                 : <Navigate to="/family" replace />}
             />
             <Route

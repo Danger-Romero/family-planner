@@ -28,11 +28,14 @@ const meta = {
         component: [
           "MUI's `Avatar`, styled by the theme in `src/theme` (styles: `src/theme/components/avatar.js`).",
           'It shows who a task or event belongs to: **filled for the person responsible**, **outlined for',
-          'people attending**. One colour for everyone; people are told apart by their initial or icon.',
+          'people attending**, and **dashed for someone who isn\'t involved** (only when picking who is, as',
+          'in the item dialog\'s "Who is involved?"). One colour for everyone; people are told apart by their',
+          'initial or icon.',
           '',
           '```jsx',
           '<Avatar role="img" aria-label="Anna">A</Avatar> // responsible',
           '<Avatar variant="outlined" role="img" aria-label="Ella">E</Avatar> // attending',
+          '<Avatar variant="dashed" role="img" aria-label="Theo">T</Avatar> // not involved',
           '```',
           '',
           'For a family member, use `MemberAvatar` (`src/components/MemberAvatar.jsx`): it picks their icon',
@@ -42,7 +45,7 @@ const meta = {
           'the person\'s name, plus the role ("Anna, responsible") when no "Responsible" / "Attending" label',
           'is shown next to it.',
           '',
-          'One size, 28×28px, always round. An icon is 18px.',
+          'One size, 28×28px (a list of people can make it larger with `sx`), always round. An icon is 18px.',
         ].join('\n'),
       },
     },
@@ -54,7 +57,7 @@ export default meta;
 /** Try the props with the controls below. */
 export const Playground = {
   args: { variant: 'circular', children: 'A', 'aria-label': 'Anna', role: 'img' },
-  argTypes: { variant: { control: 'select', options: ['circular', 'outlined'] } },
+  argTypes: { variant: { control: 'select', options: ['circular', 'outlined', 'dashed'] } },
 };
 
 /** The two roles, with an initial and with an icon. */
@@ -115,6 +118,35 @@ async function checkRoles(canvas, scope) {
 export const Roles = {
   render: () => roles,
   play: async ({ canvas, canvasElement }) => checkRoles(canvas, canvasElement),
+};
+
+/**
+ * Someone who isn't involved, on "Who is involved?" in the item dialog: a dashed edge in the
+ * outline colour, no fill, and the initial or icon in a quieter colour. Larger there, with `sx`.
+ */
+export const NotInvolved = {
+  render: () => (
+    <Row>
+      <Avatar role="img" aria-label="Theo" variant="dashed">T</Avatar>
+      <Avatar role="img" aria-label="Jonas" variant="dashed"><Star /></Avatar>
+      <Avatar role="img" aria-label="Anna" variant="dashed" sx={{ width: 40, height: 40 }}>A</Avatar>
+    </Row>
+  ),
+  play: async ({ canvas, canvasElement }) => {
+    const c = (role) => rgba(resolve(canvasElement, 'color', scheme(role)));
+    for (const name of ['Theo', 'Jonas', 'Anna']) {
+      const style = getComputedStyle(avatarOf(canvas, name));
+      await expect(style.borderTopStyle).toBe('dashed');
+      await expect(style.borderTopWidth).toBe('2px');
+      await expect(rgba(style.borderTopColor)).toEqual(c('outline'));
+      await expect(rgba(style.backgroundColor)[3]).toBe(0);
+      await expect(rgba(style.color)).toEqual(c('on-surface-variant'));
+    }
+    const svg = avatarOf(canvas, 'Jonas').querySelector('svg');
+    await expect(rgba(getComputedStyle(svg).fill)).toEqual(c('on-surface-variant'));
+    const large = avatarOf(canvas, 'Anna').getBoundingClientRect();
+    await expect([large.width, large.height]).toEqual([40, 40]);
+  },
 };
 
 /** Avatars are always round: MUI's `rounded` and `square` look like the default. */

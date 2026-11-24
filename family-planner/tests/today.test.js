@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  clockTime, dateTimeInput, dayLabel, dueLabel, eventTimes, fullDate, isUrgent, peopleOf, planToday,
-  readTaskForm, urgencyLabel,
+  clockTime, dateInput, dayLabel, dueLabel, eventTimes, fullDate, isUrgent, peopleOf, planToday,
+  readItemForm, rolesOf, timeInput, urgencyLabel,
 } from "../src/services/today.js";
 
 // Monday 19 October 2026, 10:00 local time.
@@ -118,25 +118,59 @@ test("peopleOf splits an item's people into responsible and attending, by name",
   assert.deepEqual(peopleOf("none", assignments, members), { responsible: [], attending: [] });
 });
 
-test("dateTimeInput gives a date as a datetime-local field's value, in local time", () => {
-  assert.equal(dateTimeInput(at(15)), "2026-10-19T15:00");
-  assert.equal(dateTimeInput(new Date(2026, 0, 5, 7, 5)), "2026-01-05T07:05");
-  assert.equal(dateTimeInput(null), "");
+test("dateInput and timeInput give a date as a date field's and a time field's value, in local time", () => {
+  assert.equal(dateInput(at(15)), "2026-10-19");
+  assert.equal(dateInput(new Date(2026, 0, 5, 7, 5)), "2026-01-05");
+  assert.equal(timeInput(new Date(2026, 0, 5, 7, 5)), "07:05");
+  assert.equal(dateInput(null), "");
+  assert.equal(timeInput(null), "");
 });
 
-test("readTaskForm turns the task dialog's fields into the values to save", () => {
-  const assignments = [{ member: "ella", role: "responsible" }];
+test("rolesOf gives each involved member one role, responsible if they have both", () => {
+  const pair = (member, role) => ({ id: `${member}-${role}`, item: "kit", member, role });
   assert.deepEqual(
-    readTaskForm({ title: "  Pack football kit ", due: "2026-10-19T15:00", flagged: true, assignments }),
-    { values: { title: "Pack football kit", dueAt: at(15), manuallyUrgent: true, assignments } },
+    rolesOf([pair("ella", "attending"), pair("ella", "responsible"), pair("anna", "responsible"), pair("theo", "attending")]),
+    { ella: "responsible", anna: "responsible", theo: "attending" },
   );
-  // An empty due field means no date: the task goes under Anytime.
+  assert.deepEqual(rolesOf([]), {});
+});
+
+const form = (fields) => ({
+  kind: "task", title: "Pack football kit", date: "", time: "", starts: "", ends: "", allDay: false,
+  important: false, roles: {}, ...fields,
+});
+
+test("readItemForm turns a task's fields into the values to save", () => {
   assert.deepEqual(
-    readTaskForm({ title: "Call the plumber", due: "", flagged: false, assignments: [] }),
-    { values: { title: "Call the plumber", dueAt: null, manuallyUrgent: false, assignments: [] } },
+    readItemForm(form({ title: "  Pack football kit ", date: "2026-10-19", time: "15:00", important: true, roles: { ella: "responsible", theo: "attending" } })),
+    {
+      values: {
+        kind: "task", title: "Pack football kit", dueAt: at(15), manuallyUrgent: true,
+        assignments: [{ member: "ella", role: "responsible" }, { member: "theo", role: "attending" }],
+      },
+    },
   );
-  assert.deepEqual(readTaskForm({ title: "  ", due: "", flagged: false, assignments: [] }), { error: "Enter a title." });
-  assert.deepEqual(readTaskForm({ title: "a", due: "not a date", flagged: false, assignments: [] }), {
-    error: "Enter a valid due date and time.",
+  // Without a time, it's due at the end of the day; without a date, it goes under Anytime.
+  assert.deepEqual(readItemForm(form({ date: "2026-10-19" })).values.dueAt, at(23, 59));
+  assert.equal(readItemForm(form({ time: "15:00" })).values.dueAt, null);
+  // Event fields don't count for a task.
+  assert.equal(readItemForm(form({ starts: "15:00", allDay: true })).values.startsAt, undefined);
+  assert.deepEqual(readItemForm(form({ title: "  " })), { error: "Enter a title." });
+  assert.deepEqual(readItemForm(form({ date: "2026-10-19", time: "25:00" })), { error: "Enter a valid date and deadline." });
+});
+
+test("readItemForm turns an event's fields into the values to save", () => {
+  const event = (fields) => readItemForm(form({ kind: "event", title: "Football practice", ...fields }));
+  assert.deepEqual(event({ date: "2026-10-19", starts: "15:30", ends: "16:30", important: true }), {
+    values: { kind: "event", title: "Football practice", startsAt: at(15, 30), endsAt: at(16, 30), allDay: false, assignments: [] },
   });
+  assert.equal(event({ date: "2026-10-19", starts: "15:30" }).values.endsAt, null);
+  // All day: from the start of the day, and the times don't count.
+  assert.deepEqual(event({ date: "2026-10-21", starts: "15:30", ends: "09:00", allDay: true }).values, {
+    kind: "event", title: "Football practice", startsAt: at(0, 0, 21), endsAt: null, allDay: true, assignments: [],
+  });
+  assert.deepEqual(event({ starts: "15:30" }), { error: "Pick the day of the event." });
+  assert.deepEqual(event({ date: "2026-10-19" }), { error: "Enter when the event starts." });
+  assert.deepEqual(event({ date: "2026-10-19", starts: "15:30", ends: "15:30" }), { error: "The event has to end after it starts." });
+  assert.deepEqual(event({ date: "2026-10-19", starts: "15:30", ends: "99:00" }), { error: "Enter a valid date and time." });
 });

@@ -22,7 +22,9 @@ import {
 import { checkboxOverrides } from './components/checkbox';
 import { chipOverrides } from './components/chip';
 import { fabOverrides } from './components/fab';
+import { switchOverrides } from './components/switch';
 import { outlinedInputOverrides } from './components/textField';
+import { toggleButtonGroupOverrides, toggleButtonOverrides } from './components/toggleButton';
 import { scheme, stateLayer, typeRoles, typescale, typeVariant, withOpacity } from './m3';
 
 const colorRole = (role) => ({ main: scheme(role), contrastText: scheme(`on-${role}`) });
@@ -119,5 +121,8 @@ export const theme = createTheme({
     MuiFab: fabOverrides,
     MuiAvatar: avatarOverrides,
     MuiOutlinedInput: outlinedInputOverrides,
+    MuiSwitch: switchOverrides,
+    MuiToggleButton: toggleButtonOverrides,
+    MuiToggleButtonGroup: toggleButtonGroupOverrides,
   },
 });
