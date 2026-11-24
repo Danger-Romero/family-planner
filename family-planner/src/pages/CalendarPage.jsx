@@ -107,9 +107,21 @@ const visibleItems = items
     start: item.startsAt.toISOString(),
     end: (
       item.endsAt ??
-      new Date(item.startsAt.getTime() + 30 * 60 * 1000)
+      new Date(item.startsAt.getTime() + 30 * 60 * 1000) //Events without an end time gets a 30 minute slot
     ).toISOString(),
     allDay: item.allDay,
+  }));
+
+  const memberCalendars = members
+  .map((member) => ({
+    member,
+    events: calendarEvents.filter((event) =>
+      assignments.some( //prevents duplicates if a member is both responsible and attending
+        (assignment) =>
+          assignment.item === event.id &&
+          assignment.member === member.id,
+      ),
+    ),
   }));
 
 const visibleTasks = visibleItems.filter(
@@ -188,17 +200,29 @@ const visibleTasks = visibleItems.filter(
     <section>
       <h3>Events</h3>
 
+     <Box sx={{ display: "flex", gap: 2, overflowX: "auto" }}>
+  {memberCalendars.map(({ member, events }) => (
+    <Box
+      component="section"
+      key={member.id}
+      sx={{ flex: "1 0 280px", minWidth: 280 }}
+    >
+      <h3>{member.name}</h3>
+
       <Box sx={{ height: 500, width: "100%" }}>
         <StandaloneDayView
-          events={calendarEvents}
+          events={events}
           visibleDate={selectedDate}
           readOnly
         />
       </Box>
+    </Box>
+  ))}
+</Box>
 
-      {calendarEvents.length === 0 && (
-        <p>No events for this date.</p>
-      )}
+{memberCalendars.length === 0 && (
+  <p>No assigned events for this date.</p>
+)}
     </section>
 
     <section>
