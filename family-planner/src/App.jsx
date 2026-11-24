@@ -10,6 +10,7 @@ import OverviewPage from "./pages/OverviewPage.jsx";
 import ItemsPage from "./pages/ItemsPage.jsx";
 import PlanWeekPage from "./pages/PlanWeekPage.jsx";
 import SetupPage from "./pages/SetupPage.jsx";
+import TodayPage from "./pages/TodayPage.jsx";
 import { parseConfigured } from "./services/parse.js";
 import { currentUser, isInvalidSession, logOut } from "./services/authService.js";
 import { createFamily, loadFamily } from "./services/familyService.js";
@@ -119,6 +120,13 @@ export default function App() {
               path="/"
               element={family
                 ? <OverviewPage key={family.id} family={family} />
+                : <Navigate to="/family" replace />}
+            />
+            {/* The new Today page, here while it's being built; "/" still shows the Overview. */}
+            <Route
+              path="/today"
+              element={family
+                ? <TodayPage key={family.id} family={family} />
                 : <Navigate to="/family" replace />}
             />
             <Route
