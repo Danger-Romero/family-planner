@@ -2,8 +2,9 @@
 
 A React and JavaScript app built with Vite, using Parse/Back4App for accounts
 and shared data. Adults can manage family members, and linked accounts can
-create tasks and events, assign responsible and attending members, complete
-tasks, and view the family overview.
+add tasks and events, edit tasks, assign responsible and attending members,
+complete tasks, and see the family's day, with its tasks and events, on the
+Today page.
 
 The group uses **one shared Back4App app**. Each member runs the frontend
 locally and connects to that same backend. The [database setup](#shared-database-setup-once-per-group)
@@ -63,10 +64,14 @@ server URL before starting.
    member type, and exact signup username. Choose **adult** for group members
    who need to manage members. Add accounts one at a time.
 4. Each added person refreshes the page to load the shared family.
-5. On **Today**, choose **Manage items**. Add a task with an optional due date,
-   or an event with a required start and optional end. Select members under
-   **Responsible** and **Attending**. Use **Edit assignments** to change them
-   later. Tasks can be marked complete; both kinds can be deleted.
+5. On **Today**, tap **+** to add a task or an event. A task has a title, an
+   optional date and deadline (without a time, it's due at the end of the day)
+   and **Mark as important**. An event has a title, a date, and a start and end
+   time, or **All day**. Under **People**, choose for each member whether they
+   are **Not involved**, **Responsible** or **Attending**. Tap a task to change
+   it, and tick its box to mark it done. Changing events and deleting items
+   aren't in the app for now: the old items page (`/items`) is no longer
+   reachable.
 6. **Today** shows unfinished tasks and upcoming or ongoing events, including
    the names assigned to each role. Log out from **Family** to switch accounts.
 
@@ -81,31 +86,31 @@ inputs use your browser's local time.
 ### Responsible and attending
 
 An item can have several responsible members and several attending members.
-The same member can have both roles. Members without accounts can be assigned,
-and assignments are optional; existing items start unassigned.
+Members without accounts can be assigned, and assignments are optional;
+existing items start unassigned.
+
+The app gives each member one role per item. The database and services still
+allow a member to have both roles; the dialog shows such a member as
+responsible, and saving the item from the dialog removes their attending
+record.
 
 Each member/role pair is a separate `Assignment` record pointing to an `Item`
 and a `Member`. The [ER diagram](docs/er-diagram.mmd) shows these relationships.
 `Item.createdBy` still identifies the creator. Assignment roles describe who is
 responsible or attending; they do not change account permissions.
 
-### If saving or deleting fails
+### If saving fails
 
-The item is saved before its assignments. If assignment creation fails, the
-saved item stays in the list and the creation form resets. Use **Edit
-assignments** on that item to finish; creating it again would make another item.
+A task or event is saved before its assignments. If saving the assignments
+fails, the dialog says so and stays open with your selections, and the saved
+item appears on Today. Tap **Save** again to finish: it updates that item
+rather than adding another one.
 
-Editing saves new pairs before deleting deselected pairs and keeps unchanged
-records. A failed edit keeps your selections in the open form and tries to
-reload the stored assignments. Retry **Save assignments** to finish the change.
-Each retry reads the stored pairs again, so successful parts are reused. A
-duplicate-value error triggers one automatic retry. Other failures are shown
-for a manual retry. These saves are several requests, not one transaction.
-
-Deleting an item deletes its assignments first. A failure can leave the item
-with fewer assignments, so the page reloads the stored data before another
-attempt. Follow any refresh instruction if that reload also fails. This cleanup
-runs in the app; deleting an Item directly in the dashboard does not run it.
+Saving assignments saves new pairs before deleting deselected pairs and keeps
+unchanged records. Each retry reads the stored pairs again, so successful parts
+are reused. A duplicate-value error triggers one automatic retry. Other
+failures are shown for a manual retry. These saves are several requests, not
+one transaction.
 
 ## Shared database setup (once per group)
 
@@ -124,6 +129,7 @@ Names are case-sensitive. Parse automatically adds
 | Member | `name` | String |
 | Member | `memberType` | String: `adult` or `child` |
 | Member | `birthDate` | Date; optional |
+| Member | `avatarIcon` | String; optional, an icon name such as `pets`; omit for the initial |
 | Item | `family` | Pointer → Family |
 | Item | `createdBy` | Pointer → Member |
 | Item | `kind` | String: `task` or `event` |
@@ -239,15 +245,15 @@ visibility is currently implemented.
 
 Run these checks with your group's accounts after configuring the database:
 
-1. Create a task and an event. Select several members in each role, including a
-   member without an account. Give one member both roles. Refresh and confirm
-   that **Manage items** and **Today** show the names under the correct labels.
+1. Add a task on **Today**. Under **People**, make several members responsible
+   and several attending, including a member without an account. Refresh and
+   confirm that **Today** shows the names under the correct labels.
 2. Inspect `Assignment` in the dashboard. Each selected item/member/role triple
-   should have one record. A member with both roles should have two records.
-   Confirm the unique index exists; repeated saves should keep the same IDs for
-   unchanged pairs.
-3. Edit assignments: add a member, remove a member, then clear both groups.
-   Refresh after each save and confirm the stored rows match the selections.
+   should have one record. Confirm the unique index exists; repeated saves
+   should keep the same IDs for unchanged pairs.
+3. Tap the task and change who is on it: add a member, move a member from
+   responsible to attending, then set everyone to **Not involved**. Refresh
+   after each save and confirm the stored rows match the selections.
 4. Add a new linked adult and child after assignments exist. In separate browser
    sessions, confirm both accounts can read the existing assignments and edit
    them. Confirm the adult can add members. Check the child has no write ACL
@@ -256,8 +262,15 @@ Run these checks with your group's accounts after configuring the database:
    Family, Item, and Assignment IDs through the SDK/API. Reads must return no
    accessible record and writes must fail. Dashboard administrator access does
    not test the permissions of an ordinary account.
-6. Delete an assigned item through the app. Refresh and check the dashboard:
-   the Item and its Assignment records should be gone.
+6. On **Today**, tap a task and change its title, remove its date, mark it as
+   important and swap who is responsible. Refresh: the task should be under
+   **Urgent** with the new title and people, and in the dashboard its `dueAt`
+   should be empty and `manuallyUrgent` true. Then add a task with **+** and
+   confirm it appears after a refresh.
+7. With **+**, add an event for today from now until an hour from now, and an
+   all-day event for today. Refresh: both should be in **Schedule**. In the
+   dashboard, the first has `startsAt` and `endsAt` and `allDay` false; the
+   all-day one has `startsAt` at midnight, no `endsAt` and `allDay` true.
 
 Partial saves, retries, and cleanup failures are also covered by the automated
 tests below. Those tests replace the network; they do not verify hosted settings.
@@ -285,7 +298,8 @@ browser interface. Run the live checks above separately.
 ```text
 src/
   App.jsx       # Login session, current member/family, and routes
-  pages/        # Auth, Family, Items, Overview, and Setup pages
+  pages/        # Today, Auth, Family, and Setup pages. Items (no route) and
+                #   Overview (not in the navigation) are to be merged into Today
   components/   # Family/member forms, item entries, and assignment forms/fields
   services/     # Parse connection, accounts, families, members, items, assignments, ACLs
 tests/          # Service tests and Parse persistence mock
@@ -311,7 +325,7 @@ dividing work between group members.
 | A username cannot be found | The person must sign up first. Check the exact username, `_User` Find/Get permissions, and the account's read ACL. |
 | An added account cannot see the family | Refresh its page. If sharing failed, an adult can add the same username again to repair access without creating another member. |
 | Assignments fail to load or save | Check the case-sensitive `Assignment` class and its pointer types, authenticated CLPs, record ACLs, and unique compound index. |
-| An item was created but its assignments failed | Use **Edit assignments** on the saved item and retry. Do not create the item again. |
+| A task or event was saved but its assignments failed | Tap **Save** again in the open dialog: it updates the saved item. If you closed it, tap the task on **Today** and set the people again; an event can't be opened from Today yet, so fix its assignments in the dashboard. Do not add the item again. |
 | A newly linked account cannot see old assignments | An adult can add the same username again to repair sharing, then refresh the other account's page. |
 | An account already belongs to a family | Each account can only have one member record. Use an unlinked account, or refresh if it was just added to this family. |
 | Family creation reports unconfirmed membership | Refresh before retrying; the member may already have been saved. Check the database permissions if the error continues. |

@@ -7,9 +7,9 @@ import AuthPage from "./pages/AuthPage.jsx";
 import CalendarPage from "./pages/CalendarPage.jsx";
 import FamilyPage from "./pages/FamilyPage.jsx";
 import OverviewPage from "./pages/OverviewPage.jsx";
-import ItemsPage from "./pages/ItemsPage.jsx";
 import PlanWeekPage from "./pages/PlanWeekPage.jsx";
 import SetupPage from "./pages/SetupPage.jsx";
+import TodayPage from "./pages/TodayPage.jsx";
 import { parseConfigured } from "./services/parse.js";
 import { currentUser, isInvalidSession, logOut } from "./services/authService.js";
 import { createFamily, loadFamily } from "./services/familyService.js";
@@ -118,13 +118,14 @@ export default function App() {
             <Route
               path="/"
               element={family
-                ? <OverviewPage key={family.id} family={family} />
+                ? <TodayPage key={family.id} family={family} member={member} />
                 : <Navigate to="/family" replace />}
             />
+            {/* The old Overview, no longer in the navigation; kept until it's merged into Today. */}
             <Route
-              path="/items"
+              path="/overview"
               element={family
-                ? <ItemsPage key={family.id} family={family} member={member} />
+                ? <OverviewPage key={family.id} family={family} />
                 : <Navigate to="/family" replace />}
             />
             <Route

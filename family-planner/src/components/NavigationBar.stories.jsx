@@ -31,7 +31,7 @@ const meta = {
           '',
           '| Tab | Route |',
           '| --- | --- |',
-          '| Today | `/` (also highlighted on `/items`, which will become part of Today) |',
+          '| Today | `/` |',
           '| Calendar | `/calendar` |',
           '| Plan Week | `/plan-week` |',
           '| Family | `/family` |',
@@ -74,12 +74,6 @@ export const Today = {
       await expect(box.height).toBeGreaterThanOrEqual(44);
     }
   },
-};
-
-/** On the Items page (`/items`): Today stays highlighted, since Items will become part of Today. */
-export const Items = {
-  parameters: { route: '/items' },
-  play: async ({ canvas }) => expect(selectedTabs(canvas)).toEqual(['Today']),
 };
 
 export const Calendar = {

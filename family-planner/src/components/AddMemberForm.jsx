@@ -1,5 +1,6 @@
 import { useState } from "react";
 import Button from '@mui/material/Button';
+import AvatarPicker from "./AvatarPicker.jsx";
 
 
 export default function AddMemberForm({ onAdd }) {
@@ -7,6 +8,8 @@ export default function AddMemberForm({ onAdd }) {
   const [memberType, setMemberType] = useState("child");
   const [username, setUsername] = useState("");
   const [birthDate, setBirthDate] = useState("");
+  // "" for the initial, or an icon name from avatars.js.
+  const [avatarIcon, setAvatarIcon] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [pending, setPending] = useState(false);
@@ -18,12 +21,13 @@ export default function AddMemberForm({ onAdd }) {
     setSuccess("");
     setPending(true);
     try {
-      await onAdd({ name, memberType, username, birthDate });
+      await onAdd({ name, memberType, username, birthDate, avatarIcon });
       setSuccess("Member saved. If that account was already in this family, its existing member was kept.");
       setName("");
       setUsername("");
       setBirthDate("");
       setMemberType("child");
+      setAvatarIcon("");
     } catch (error) {
       setError(error.message || "Could not add the member.");
     } finally {
@@ -37,6 +41,7 @@ export default function AddMemberForm({ onAdd }) {
         <label htmlFor="member-name">Name</label>{" "}
         <input id="member-name" value={name} onChange={(event) => setName(event.target.value)} disabled={pending} required />
       </p>
+      <AvatarPicker name={name} value={avatarIcon} onChange={setAvatarIcon} disabled={pending} />
       <p>
         <label htmlFor="member-type">Member type</label>{" "}
         <select id="member-type" value={memberType} onChange={(event) => setMemberType(event.target.value)} disabled={pending}>

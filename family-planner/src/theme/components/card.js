@@ -19,7 +19,9 @@
  *
  * These states assume the `CardActionArea` fills the card. Next to other controls they would
  * still apply to the whole card (the focus ring goes around those controls too, and a disabled
- * action area fades them), so a card with its own controls needs its own design for that.
+ * action area fades them), so a card with its own controls needs its own design for that. One
+ * such design is the task card on Today (src/components/today/TaskCard.jsx): the action area fills
+ * the card from underneath, and only the checkbox on top of it takes its own clicks.
  *
  * Values are Google's published M3 values (Jetpack Compose `ElevatedCardTokens`,
  * `FilledCardTokens`, `OutlinedCardTokens`).

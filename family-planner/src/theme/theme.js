@@ -10,6 +10,7 @@
  * - the M3 type scale as Typography variants: <Typography variant="titleMedium">.
  */
 import { createTheme } from '@mui/material/styles';
+import { avatarOverrides } from './components/avatar';
 import { buttonOverrides } from './components/button';
 import {
   cardActionAreaOverrides,
@@ -20,6 +21,10 @@ import {
 } from './components/card';
 import { checkboxOverrides } from './components/checkbox';
 import { chipOverrides } from './components/chip';
+import { fabOverrides } from './components/fab';
+import { switchOverrides } from './components/switch';
+import { outlinedInputOverrides } from './components/textField';
+import { toggleButtonGroupOverrides, toggleButtonOverrides } from './components/toggleButton';
 import { scheme, stateLayer, typeRoles, typescale, typeVariant, withOpacity } from './m3';
 
 const colorRole = (role) => ({ main: scheme(role), contrastText: scheme(`on-${role}`) });
@@ -113,5 +118,11 @@ export const theme = createTheme({
     MuiCardActionArea: cardActionAreaOverrides,
     MuiCheckbox: checkboxOverrides,
     MuiChip: chipOverrides,
+    MuiFab: fabOverrides,
+    MuiAvatar: avatarOverrides,
+    MuiOutlinedInput: outlinedInputOverrides,
+    MuiSwitch: switchOverrides,
+    MuiToggleButton: toggleButtonOverrides,
+    MuiToggleButtonGroup: toggleButtonGroupOverrides,
   },
 });

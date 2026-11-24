@@ -12,7 +12,8 @@ import CardHeader from '@mui/material/CardHeader';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { expect, within } from 'storybook/test';
-import { elevation, scheme, typescale } from '../m3';
+import MemberAvatar from '../../components/MemberAvatar.jsx';
+import { elevation, scheme } from '../m3';
 import { resolve } from './storyHelpers';
 
 /** The card that contains `text`. */
@@ -57,34 +58,6 @@ function CheckboxPlaceholder() {
       aria-hidden="true"
       sx={{ width: 18, height: 18, border: `2px solid ${scheme('on-surface-variant')}`, borderRadius: '2px' }}
     />
-  );
-}
-
-/**
- * Stand-in for the avatar, which is a later component: filled for the responsible person, hollow
- * for people attending.
- */
-function AvatarPlaceholder({ name, hollow = false }) {
-  return (
-    <Box
-      role="img"
-      aria-label={name}
-      sx={{
-        width: 28,
-        height: 28,
-        flex: 'none',
-        boxSizing: 'border-box',
-        display: 'grid',
-        placeItems: 'center',
-        borderRadius: '50%',
-        border: `2px solid ${scheme('primary')}`,
-        bgcolor: hollow ? 'transparent' : scheme('primary'),
-        color: hollow ? scheme('primary') : scheme('on-primary'),
-        ...typescale('label-large'),
-      }}
-    >
-      {name[0]}
-    </Box>
   );
 }
 
@@ -398,7 +371,7 @@ export const TodayExamples = {
               </Typography>
               <Box sx={{ flex: 1 }} />
               <RoleLabel>Responsible</RoleLabel>
-              <AvatarPlaceholder name="Anna" />
+              <MemberAvatar member={{ name: 'Anna' }} />
             </Stack>
           </Stack>
         </Row>
@@ -418,10 +391,10 @@ export const TodayExamples = {
               </Stack>
               <Stack direction="row" sx={{ alignItems: 'center', gap: 0.75, flexWrap: 'wrap' }}>
                 <RoleLabel>Responsible</RoleLabel>
-                <AvatarPlaceholder name="Anna" />
+                <MemberAvatar member={{ name: 'Anna' }} />
                 <Box aria-hidden="true" sx={{ width: '1px', height: 20, mx: 0.5, bgcolor: 'divider' }} />
                 <RoleLabel>Attending</RoleLabel>
-                <AvatarPlaceholder name="Ella" hollow />
+                <MemberAvatar member={{ name: 'Ella' }} variant="outlined" />
               </Stack>
             </Stack>
             <ChevronRight sx={{ alignSelf: 'center', color: 'text.secondary' }} />

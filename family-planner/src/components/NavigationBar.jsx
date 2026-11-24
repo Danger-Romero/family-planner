@@ -31,13 +31,14 @@ const destinations = [
 function destinationForPath(pathname) {
   // Only the first part of the path counts: '/family/' and '/calendar/2026' match their tab.
   const section = `/${pathname.split('/')[1]}`;
-  // Items will become part of Today.
-  if (section === '/items') return 'today';
   return destinations.find(({ to }) => to === section)?.value ?? null;
 }
 
-/** M3: the bar is 64px high, plus the phone's safe area (e.g. the iPhone home indicator). */
-const barHeight = 64;
+/**
+ * M3: the bar is 64px high, plus the phone's safe area (e.g. the iPhone home indicator). Exported
+ * for things placed above the bar, like the Today page's "+".
+ */
+export const barHeight = 64;
 
 // Keeps the end of the page clear of the fixed bar.
 const Spacer = styled('div')({

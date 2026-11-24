@@ -1,5 +1,6 @@
 import Parse from "./parse.js";
 import { createFamilyACL } from "./familyAccess.js";
+import { isAvatarIcon } from "./avatars.js";
 
 const Family = Parse.Object.extend("Family");
 const Member = Parse.Object.extend("Member");
@@ -15,6 +16,8 @@ export function toMember(member) {
     memberType: member.get("memberType"),
     birthDate: member.get("birthDate") ?? null,
     defaultSavedView: member.get("defaultSavedView")?.id ?? null,
+    // One of the names in avatars.js, or null for the initial.
+    avatarIcon: member.get("avatarIcon") ?? null,
   };
 }
 
@@ -37,9 +40,10 @@ export async function loadMembers(family) {
   );
 }
 
-export async function addMember({ name, memberType, username = "", birthDate = "" }) {
+export async function addMember({ name, memberType, username = "", birthDate = "", avatarIcon = "" }) {
   if (!name.trim()) throw new Error("Enter a member name.");
   if (!["adult", "child"].includes(memberType)) throw new Error("Choose adult or child.");
+  if (avatarIcon && !isAvatarIcon(avatarIcon)) throw new Error("Choose one of the avatar icons.");
 
   let birthday = null;
   if (birthDate) {
@@ -71,12 +75,18 @@ export async function addMember({ name, memberType, username = "", birthDate = "
     member.set({ family, name: name.trim(), memberType });
     if (account) member.set("user", account);
     if (birthday) member.set("birthDate", birthday);
+    // Left out for the initial, so members can be saved before the database has the column.
+    if (avatarIcon) member.set("avatarIcon", avatarIcon);
     member.setACL(createFamilyACL([...members.map(toMember), toMember(member)]));
     try {
       await member.save();
     } catch (error) {
       if (error.code === Parse.Error.DUPLICATE_VALUE) {
         throw new Error("That account already belongs to a family. If it was just added here, add the same username again to finish sharing.", { cause: error });
+      }
+      // The shared database doesn't let the app add columns (see the README's database setup).
+      if (avatarIcon && error.code === Parse.Error.OPERATION_FORBIDDEN) {
+        throw new Error("The member couldn't be saved with an icon. The database may still need the Member field avatarIcon (see the README's database setup). Choose the initial, or ask whoever manages the database to add it.", { cause: error });
       }
       throw error;
     }
