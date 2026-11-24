@@ -9,7 +9,7 @@ export default function MemberCalendar({
   return (
     <Box
       component="section"
-      sx={{ flex: "1 0 280px", minWidth: 280 }}
+      sx={{ minWidth: 0 }}
     >
       <h3>{member.name}</h3>
 
