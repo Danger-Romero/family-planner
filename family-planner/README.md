@@ -63,10 +63,12 @@ server URL before starting.
    member type, and exact signup username. Choose **adult** for group members
    who need to manage members. Add accounts one at a time.
 4. Each added person refreshes the page to load the shared family.
-5. On **Today**, choose **Manage items**. Add a task with an optional due date,
-   or an event with a required start and optional end. Select members under
-   **Responsible** and **Attending**. Use **Edit assignments** to change them
-   later. Tasks can be marked complete; both kinds can be deleted.
+5. On **Today**, tap **+** to add a task: a title, an optional due date and
+   time, **Flag as urgent**, and the members who are **Responsible** and
+   **Attending**. Tap a task to change any of these, and tick its box to mark it
+   done. Events are added on the items page (`/items`): an event has a required
+   start and optional end. There, **Edit assignments** changes who is on an
+   item, and both kinds can be deleted.
 6. **Today** shows unfinished tasks and upcoming or ongoing events, including
    the names assigned to each role. Log out from **Family** to switch accounts.
 
@@ -259,6 +261,11 @@ Run these checks with your group's accounts after configuring the database:
    not test the permissions of an ordinary account.
 6. Delete an assigned item through the app. Refresh and check the dashboard:
    the Item and its Assignment records should be gone.
+7. On **Today**, tap a task and change its title, remove its due date, flag it
+   and swap who is responsible. Refresh: the task should be under **Urgent**
+   with the new title and people, and in the dashboard its `dueAt` should be
+   empty and `manuallyUrgent` true. Then add a task with **+** and confirm it
+   appears after a refresh.
 
 Partial saves, retries, and cleanup failures are also covered by the automated
 tests below. Those tests replace the network; they do not verify hosted settings.

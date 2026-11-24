@@ -3,12 +3,12 @@ import Box from "@mui/material/Box";
 import Fab from "@mui/material/Fab";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import { useId } from "react";
-import { Link } from "react-router-dom";
+import { useId, useState } from "react";
 import { fullDate, peopleOf } from "../../services/today.js";
 import { barHeight } from "../NavigationBar.jsx";
 import EventCard from "./EventCard.jsx";
 import TaskCard from "./TaskCard.jsx";
+import TaskDialog from "./TaskDialog.jsx";
 
 /** A titled list of cards. Without items it shows `empty`, or nothing at all. */
 function Section({ title, items, renderItem, empty }) {
@@ -35,13 +35,36 @@ function Section({ title, items, renderItem, empty }) {
 
 /**
  * The Today page as it looks: the header, the Urgent, Schedule and Anytime sections and the "+".
- * It only draws what it's given; TodayPage loads the data and planToday (services/today.js)
+ * It draws what it's given; TodayPage loads and saves the data and planToday (services/today.js)
  * decides what goes where. `savingIds` are tasks whose tick is being saved; `onToggle(task, done)`
  * is called when a task is ticked or unticked.
+ *
+ * Tapping a task card opens the task dialog with that task, and the "+" opens it empty.
+ * Saving calls `onSaveTask(task, values)` (`task` is null for a new one) and closes the dialog once
+ * that's done. If it throws, the dialog shows the error and stays open. An error with a `task`
+ * means that task was saved after all (a new task, without its people), so the dialog goes on
+ * editing it instead of adding it again.
  */
 export default function TodayView({
   familyName, now, urgent, schedule, anytime = [], members, assignments, savingIds = [], error = "", onToggle,
+  onSaveTask,
 }) {
+  // A new key each time it opens, so its fields start from the task again.
+  const [dialog, setDialog] = useState({ key: 0, open: false, task: null });
+  const openDialog = (task) => setDialog(({ key }) => ({ key: key + 1, open: true, task }));
+  // Keeps the task while the dialog fades out.
+  const closeDialog = () => setDialog((current) => ({ ...current, open: false }));
+
+  async function saveTask(values) {
+    try {
+      await onSaveTask(dialog.task, values);
+      closeDialog();
+    } catch (failure) {
+      if (failure.task) setDialog((current) => ({ ...current, task: failure.task }));
+      throw failure;
+    }
+  }
+
   const card = (urgentSection) => (item) => {
     const people = peopleOf(item.id, assignments, members);
     return item.kind === "task" ? (
@@ -53,6 +76,7 @@ export default function TodayView({
         urgent={urgentSection}
         saving={savingIds.includes(item.id)}
         onToggle={onToggle}
+        onEdit={openDialog}
       />
     ) : (
       <EventCard key={item.id} event={item} people={people} now={now} />
@@ -87,13 +111,22 @@ export default function TodayView({
       <Section title="Anytime" items={anytime} renderItem={card(false)} />
 
       <Fab
-        component={Link}
-        to="/items"
-        aria-label="New task or event"
+        aria-label="New task"
+        onClick={() => openDialog(null)}
         sx={{ position: "fixed", right: 16, bottom: `calc(${barHeight}px + env(safe-area-inset-bottom) + 16px)` }}
       >
         <AddIcon />
       </Fab>
+
+      <TaskDialog
+        key={dialog.key}
+        open={dialog.open}
+        task={dialog.task}
+        members={members}
+        assignments={dialog.task ? assignments.filter((assignment) => assignment.item === dialog.task.id) : []}
+        onSave={saveTask}
+        onClose={closeDialog}
+      />
     </Box>
   );
 }

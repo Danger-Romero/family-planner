@@ -22,6 +22,7 @@ import {
 import { checkboxOverrides } from './components/checkbox';
 import { chipOverrides } from './components/chip';
 import { fabOverrides } from './components/fab';
+import { outlinedInputOverrides } from './components/textField';
 import { scheme, stateLayer, typeRoles, typescale, typeVariant, withOpacity } from './m3';
 
 const colorRole = (role) => ({ main: scheme(role), contrastText: scheme(`on-${role}`) });
@@ -117,5 +118,6 @@ export const theme = createTheme({
     MuiChip: chipOverrides,
     MuiFab: fabOverrides,
     MuiAvatar: avatarOverrides,
+    MuiOutlinedInput: outlinedInputOverrides,
   },
 });

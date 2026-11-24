@@ -23,9 +23,11 @@ function startOfNextDay(date) {
 
 const sameDay = (first, second) => startOfDay(first).getTime() === startOfDay(second).getTime();
 
+const pad = (number) => String(number).padStart(2, "0");
+
 /** "07:45": the 24-hour clock, as on the wireframe. */
 export const clockTime = (date) =>
-  `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+  `${pad(date.getHours())}:${pad(date.getMinutes())}`;
 
 /** "Wed 21 Oct" */
 export const dayLabel = (date) =>
@@ -122,6 +124,25 @@ export function planToday(items, now) {
     .filter((item) => item.kind === "task" && !item.completed && !item.dueAt && !isUrgent(item, now))
     .sort(byTitle);
   return { urgent, schedule, anytime };
+}
+
+/** "2026-10-19T15:00": a date as the value of a datetime-local field, in local time. "" for no date. */
+export function dateTimeInput(date) {
+  if (!date) return "";
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${clockTime(date)}`;
+}
+
+/**
+ * The task dialog's fields ({ title, due, flagged, assignments }, `due` as a datetime-local value)
+ * as the values to save: { values: { title, dueAt, manuallyUrgent, assignments } }, or
+ * { error } saying what to fix. An empty `due` is a task without a date.
+ */
+export function readTaskForm({ title, due, flagged, assignments }) {
+  if (!title.trim()) return { error: "Enter a title." };
+  // A datetime-local value without an offset is read as local time.
+  const dueAt = due ? new Date(due) : null;
+  if (dueAt && Number.isNaN(dueAt.getTime())) return { error: "Enter a valid due date and time." };
+  return { values: { title: title.trim(), dueAt, manuallyUrgent: flagged, assignments } };
 }
 
 /** An item's people: { responsible: [members], attending: [members] }, each by name. */

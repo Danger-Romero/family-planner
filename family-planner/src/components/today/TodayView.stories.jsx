@@ -1,5 +1,5 @@
 import { MemoryRouter } from 'react-router-dom';
-import { expect, fn, within } from 'storybook/test';
+import { expect, fn, waitFor, within } from 'storybook/test';
 import NavigationBar from '../NavigationBar.jsx';
 import { planToday } from '../../services/today.js';
 import { scheme } from '../../theme/m3.js';
@@ -13,6 +13,13 @@ const plan = planToday(sampleItems, sampleNow);
 const cardOf = (canvas, title) => canvas.getByText(title).closest('li');
 const titlesIn = (section) => section.getAllByRole('listitem').map((item) => item.querySelector('h3').textContent);
 const sectionOf = (canvas, name) => within(canvas.getByRole('region', { name }));
+/** The dialog is drawn in a portal at the end of <body>, outside the story's canvas. */
+const page = (canvasElement) => within(canvasElement.ownerDocument.body);
+/** What a tap in the middle of `element` lands on. */
+const hit = (element) => {
+  const box = element.getBoundingClientRect();
+  return element.ownerDocument.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+};
 
 const meta = {
   title: 'Pages/Today',
@@ -29,6 +36,7 @@ const meta = {
     savingIds: [],
     error: '',
     onToggle: fn(),
+    onSaveTask: fn(async () => {}),
   },
   globals: { viewport: { value: 'mobile2', isRotated: false } },
   parameters: {
@@ -44,8 +52,10 @@ const meta = {
           '2. `planToday()` (`src/services/today.js`) decides what goes in **Urgent**, **Schedule** and',
           '   **Anytime** (tasks without a date), in which order. Plain functions, unit-tested in',
           '   `tests/today.test.js`.',
-          '3. `TodayView` lays out the header, the two sections and the "+".',
+          '3. `TodayView` lays out the header, the sections and the "+".',
           '4. `TaskCard` and `EventCard` draw one item each; `People` draws who is responsible and attending.',
+          '   A task card is one big button: tapping it opens `TaskDialog` to change the task. The "+" opens',
+          '   the same dialog for a new task.',
           '5. They are built from the themed MUI components (Card, Checkbox, Avatar, FAB), so the look comes',
           '   from `src/theme` and the components don\'t set colours of their own.',
           '',
@@ -121,9 +131,8 @@ export const Default = {
     await userEvent.click(canvas.getByRole('checkbox', { name: 'Done: Pack football kit' }));
     await expect(args.onToggle).toHaveBeenCalledWith(expect.objectContaining({ id: 'kit' }), true);
 
-    // The "+" opens the add-item form, 16px above the navigation bar.
-    const add = canvas.getByRole('link', { name: 'New task or event' });
-    await expect(add).toHaveAttribute('href', '/items');
+    // The "+" sits 16px above the navigation bar.
+    const add = canvas.getByRole('button', { name: 'New task' });
     const nav = canvas.getByRole('navigation', { name: 'Main navigation' }).getBoundingClientRect();
     await expect(nav.top - add.getBoundingClientRect().bottom).toBeCloseTo(16, 0);
   },
@@ -134,8 +143,95 @@ export const LastCardClearOfTheFab = {
   play: async ({ canvas }) => {
     window.scrollTo(0, document.documentElement.scrollHeight);
     const last = cardOf(canvas, 'Fix the bike light').getBoundingClientRect();
-    const add = canvas.getByRole('link', { name: 'New task or event' }).getBoundingClientRect();
+    const add = canvas.getByRole('button', { name: 'New task' }).getBoundingClientRect();
     await expect(last.bottom).toBeLessThanOrEqual(add.top);
+  },
+};
+
+/**
+ * The whole task card is a button that opens the task dialog with the task filled in. Only the
+ * checkbox on it does something else. Saving hands the changes to the page and closes the dialog.
+ */
+export const EditATask = {
+  play: async ({ args, canvas, canvasElement, userEvent }) => {
+    const card = cardOf(canvas, 'Pack football kit');
+    card.scrollIntoView({ block: 'center' });
+    const edit = within(card).getByRole('button', { name: 'Edit: Pack football kit' });
+    const box = within(card).getByRole('checkbox', { name: 'Done: Pack football kit' });
+
+    // The button fills the card (inside its 1px outline)...
+    await expect(edit.offsetWidth).toBe(card.clientWidth);
+    await expect(edit.offsetHeight).toBe(card.clientHeight);
+    // ...and a tap anywhere on the card lands on it, except on the checkbox.
+    await expect(edit.contains(hit(within(card).getByRole('heading', { level: 3 })))).toBe(true);
+    await expect(edit.contains(hit(within(card).getByRole('img', { name: 'Ella' })))).toBe(true);
+    await expect(hit(box)).toBe(box);
+
+    // Tabbing reaches the checkbox first, then the card, which shows the focus ring.
+    box.focus();
+    await userEvent.tab();
+    await expect(edit).toHaveFocus();
+    await expect(getComputedStyle(card).outlineWidth).toBe('3px');
+
+    await userEvent.click(edit);
+    const screen = page(canvasElement);
+    const dialog = await screen.findByRole('dialog', { name: 'Edit task' });
+    const title = within(dialog).getByRole('textbox', { name: 'Title' });
+    await expect(title).toHaveValue('Pack football kit');
+    await userEvent.type(title, ' and boots');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+    await expect(args.onSaveTask).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'kit' }),
+      { title: 'Pack football kit and boots', dueAt: new Date(2026, 9, 19, 15), manuallyUrgent: false,
+        assignments: [{ member: 'ella', role: 'responsible' }] },
+    );
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await expect(args.onToggle).not.toHaveBeenCalled();
+  },
+};
+
+/** The "+" opens the same dialog, empty, for a new task. */
+export const NewTask = {
+  play: async ({ args, canvas, canvasElement, userEvent }) => {
+    await userEvent.click(canvas.getByRole('button', { name: 'New task' }));
+    const screen = page(canvasElement);
+    const dialog = await screen.findByRole('dialog', { name: 'New task' });
+    await userEvent.type(within(dialog).getByRole('textbox', { name: 'Title' }), 'Buy birthday present');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Add task' }));
+    await expect(args.onSaveTask).toHaveBeenCalledWith(null, {
+      title: 'Buy birthday present', dueAt: null, manuallyUrgent: false, assignments: [],
+    });
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  },
+};
+
+/**
+ * A new task that was saved, but not its people: the dialog says so and goes on editing that
+ * task, so saving again doesn't add it twice.
+ */
+export const NewTaskSavedWithoutItsPeople = {
+  args: { onSaveTask: fn() },
+  beforeEach: ({ args }) => {
+    const saved = { ...sampleItems.find((item) => item.id === 'bike'), id: 'new', title: 'Buy birthday present' };
+    const failure = Object.assign(new Error('"Buy birthday present" was saved, but not who\'s responsible and attending. Try again.'), { task: saved });
+    args.onSaveTask.mockRejectedValueOnce(failure).mockResolvedValue();
+  },
+  play: async ({ args, canvas, canvasElement, userEvent }) => {
+    await userEvent.click(canvas.getByRole('button', { name: 'New task' }));
+    const screen = page(canvasElement);
+    const dialog = await screen.findByRole('dialog', { name: 'New task' });
+    await userEvent.type(within(dialog).getByRole('textbox', { name: 'Title' }), 'Buy birthday present');
+    await userEvent.click(within(within(dialog).getByRole('group', { name: 'Responsible' })).getByRole('checkbox', { name: 'Anna' }));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Add task' }));
+
+    await expect(await within(dialog).findByRole('alert')).toHaveTextContent('was saved, but not who\'s responsible');
+    await expect(dialog).toHaveAccessibleName('Edit task');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+    await expect(args.onSaveTask).toHaveBeenLastCalledWith(
+      expect.objectContaining({ id: 'new' }),
+      expect.objectContaining({ assignments: [{ member: 'anna', role: 'responsible' }] }),
+    );
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   },
 };
 

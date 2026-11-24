@@ -4,7 +4,7 @@ import { Parse, session, timestamp, pointer, saved, familyRow, memberRow, itemRo
 import { currentUser, signUp, logIn, logOut } from "../src/services/authService.js";
 import { createFamily, loadFamily } from "../src/services/familyService.js";
 import { loadCurrentMember, loadMembers, addMember } from "../src/services/memberService.js";
-import { addItem, loadItems, setItemCompleted, deleteItem } from "../src/services/itemService.js";
+import { addItem, loadItems, setItemCompleted, deleteItem, updateTask } from "../src/services/itemService.js";
 
 const family = { id: "family1", name: "Our family" };
 const member = {
@@ -472,6 +472,58 @@ test("Item writes serialize plain relationships and task/event dates", async (t)
   assert.equal(event.dueAt, null);
   assert.equal(event.startsAt.getTime(), start.getTime());
   assert.equal(event.endsAt.getTime(), end.getTime());
+});
+
+test("a new task can be flagged as urgent", async (t) => {
+  const api = session(t);
+  familyMembersReply(api);
+  api.reply("POST", "classes/Item", (body) => {
+    assert.equal(body.manuallyUrgent, true);
+    return saved("task1");
+  });
+  const task = await addItem(family, member, { kind: "task", title: "Pay", manuallyUrgent: true });
+  assert.equal(task.manuallyUrgent, true);
+});
+
+test("updateTask saves a task's title, due date and flag, and can remove the due date", async (t) => {
+  const api = session(t);
+  const due = new Date("2026-11-06T15:00:00.000Z");
+  api.reply("GET", "classes/Item", (body) => {
+    assert.equal(body.where.objectId, "item1");
+    return { results: [itemRow()] };
+  });
+  api.reply("PUT", "classes/Item/item1", (body) => {
+    assert.deepEqual(body, {
+      title: "Buy oat milk", manuallyUrgent: true, dueAt: { __type: "Date", iso: due.toISOString() },
+    });
+    return { updatedAt: timestamp };
+  });
+  const task = await updateTask("item1", { title: " Buy oat milk ", dueAt: due, manuallyUrgent: true });
+  assert.equal(task.id, "item1");
+  assert.equal(task.kind, "task");
+  assert.equal(task.family, "family1");
+  assert.equal(task.title, "Buy oat milk");
+  assert.equal(task.dueAt.getTime(), due.getTime());
+  assert.equal(task.manuallyUrgent, true);
+
+  api.reply("GET", "classes/Item", { results: [{ ...itemRow(), dueAt: { __type: "Date", iso: due.toISOString() } }] });
+  api.reply("PUT", "classes/Item/item1", (body) => {
+    assert.deepEqual(body, { title: "Milk", manuallyUrgent: false, dueAt: { __op: "Delete" } });
+    return { updatedAt: timestamp };
+  });
+  const undated = await updateTask("item1", { title: "Milk", dueAt: null, manuallyUrgent: false });
+  assert.equal(undated.dueAt, null);
+  assert.equal(undated.manuallyUrgent, false);
+});
+
+test("updateTask checks its input before any request and edits only tasks", async (t) => {
+  const api = session(t);
+  await assert.rejects(updateTask("item1", { title: " " }), /title/);
+  await assert.rejects(updateTask("item1", { title: "Milk", dueAt: new Date("invalid") }), /due date/);
+  assert.equal(api.calls.length, 0);
+  api.reply("GET", "classes/Item", { results: [{ ...itemRow("event1"), kind: "event" }] });
+  await assert.rejects(updateTask("event1", { title: "Dinner" }), /Only tasks/);
+  assert.ok(api.calls.every((call) => call.method === "GET"));
 });
 
 test("Item creation verifies the current account owns the selected Member", async (t) => {

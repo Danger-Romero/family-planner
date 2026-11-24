@@ -14,14 +14,29 @@ const data = {
   assignments: [{ id: 'a1', item: 'pay', member: 'jonas', role: 'responsible' }],
 };
 
+/** Stand-in for saving a task from the dialog: gives back what the database would. */
+async function saveTask({ task: changed, values }) {
+  const { assignments, ...fields } = values;
+  const saved = { ...(changed ?? { ...task('new', ''), manuallyUrgent: false }), ...fields };
+  return {
+    task: saved,
+    assignments: assignments.map((pair) => ({ id: `${saved.id}-${pair.member}-${pair.role}`, item: saved.id, ...pair })),
+  };
+}
+
+/** The dialog is drawn in a portal at the end of <body>, outside the story's canvas. */
+const page = (canvasElement) => within(canvasElement.ownerDocument.body);
+
 const meta = {
   title: 'Pages/TodayPage',
   component: TodayPage,
   tags: ['ai-generated'],
   args: {
     family: sampleFamily,
+    member: sampleMembers[0],
     load: fn(async () => data),
     saveCompleted: fn(async () => {}),
+    saveTask: fn(saveTask),
   },
   globals: { viewport: { value: 'mobile2', isRotated: false } },
   parameters: {
@@ -29,9 +44,9 @@ const meta = {
     docs: {
       description: {
         component: [
-          'What `TodayPage` does around `TodayView`: loading, ticking a task and saving it, and what',
-          'happens when that fails. `load` and `saveCompleted` default to the real services; these',
-          'stories pass stand-ins, so nothing reaches the database.',
+          'What `TodayPage` does around `TodayView`: loading, ticking a task and saving it, saving a task',
+          'from the task dialog, and what happens when that fails. `load`, `saveCompleted` and `saveTask`',
+          'default to the real services; these stories pass stand-ins, so nothing reaches the database.',
         ].join('\n'),
       },
     },
@@ -91,6 +106,68 @@ export const SaveFails = {
     await expect(box).toBeEnabled();
     // The other task is untouched.
     await expect(canvas.getByRole('checkbox', { name: 'Done: Return the school form' })).not.toBeChecked();
+  },
+};
+
+/**
+ * Changing a task in the dialog saves it and puts it where it belongs now: without its flag and
+ * date, it moves from Urgent to Anytime.
+ */
+export const EditATask = {
+  play: async ({ args, canvas, canvasElement, userEvent }) => {
+    await userEvent.click(await canvas.findByRole('button', { name: 'Edit: Pay football membership' }));
+    const dialog = await page(canvasElement).findByRole('dialog', { name: 'Edit task' });
+    await userEvent.click(within(dialog).getByRole('checkbox', { name: 'Flag as urgent' }));
+    await userEvent.click(within(within(dialog).getByRole('group', { name: 'Responsible' })).getByRole('checkbox', { name: 'Anna' }));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+    await expect(args.saveTask).toHaveBeenCalledWith({
+      family: sampleFamily,
+      member: sampleMembers[0],
+      task: expect.objectContaining({ id: 'pay' }),
+      values: {
+        title: 'Pay football membership', dueAt: null, manuallyUrgent: false,
+        assignments: [{ member: 'jonas', role: 'responsible' }, { member: 'anna', role: 'responsible' }],
+      },
+    });
+    const anytime = within(await canvas.findByRole('region', { name: 'Anytime' }));
+    await expect(anytime.getByRole('heading', { name: 'Pay football membership' })).toBeInTheDocument();
+    await expect(anytime.getByRole('img', { name: 'Anna' })).toBeInTheDocument();
+    const urgent = within(canvas.getByRole('region', { name: 'Urgent' }));
+    await expect(urgent.queryByRole('heading', { name: 'Pay football membership' })).toBeNull();
+  },
+};
+
+/** A task added with the "+" shows up on the page, here flagged, so under Urgent. */
+export const AddATask = {
+  play: async ({ args, canvas, canvasElement, userEvent }) => {
+    await userEvent.click(await canvas.findByRole('button', { name: 'New task' }));
+    const dialog = await page(canvasElement).findByRole('dialog', { name: 'New task' });
+    await userEvent.type(within(dialog).getByRole('textbox', { name: 'Title' }), 'Renew passports');
+    await userEvent.click(within(dialog).getByRole('checkbox', { name: 'Flag as urgent' }));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Add task' }));
+
+    await expect(args.saveTask).toHaveBeenCalledWith(expect.objectContaining({ task: null, member: sampleMembers[0] }));
+    // While the dialog is open (and fading out), the page is hidden from screen readers.
+    const urgent = within(await canvas.findByRole('region', { name: 'Urgent' }));
+    await expect(urgent.getByRole('heading', { name: 'Renew passports' })).toBeInTheDocument();
+  },
+};
+
+/** If saving fails, the dialog says why and stays open. Cancelling leaves the page as it was. */
+export const SaveTaskFails = {
+  args: { saveTask: fn(async () => { throw new Error('No connection'); }) },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    await userEvent.click(await canvas.findByRole('button', { name: 'Edit: Return the school form' }));
+    const dialog = await page(canvasElement).findByRole('dialog', { name: 'Edit task' });
+    const title = within(dialog).getByRole('textbox', { name: 'Title' });
+    await userEvent.clear(title);
+    await userEvent.type(title, 'Sign the school form');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+    await expect(await within(dialog).findByRole('alert')).toHaveTextContent('No connection');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    await expect(await canvas.findByRole('heading', { name: 'Return the school form' })).toBeInTheDocument();
+    await expect(canvas.queryByRole('heading', { name: 'Sign the school form' })).toBeNull();
   },
 };
 

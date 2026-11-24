@@ -76,13 +76,29 @@ export async function addItem(family, member, values) {
     note: "",
     completed: false,
     allDay: false,
-    manuallyUrgent: false,
+    manuallyUrgent: values.manuallyUrgent === true,
     visibility: "everyone",
   });
   for (const field of ["dueAt", "startsAt", "endsAt"]) {
     if (values[field] != null) item.set(field, values[field]);
   }
   item.setACL(createFamilyACL(members, true));
+  return toItem(await item.save());
+}
+
+/**
+ * Saves a task's title, due date (`null`: no date) and flag. Returns the saved task.
+ * Who is responsible and attending is saved separately (saveAssignments).
+ */
+export async function updateTask(id, { title, dueAt = null, manuallyUrgent = false }) {
+  if (typeof title !== "string" || !title.trim()) throw new Error("Enter a title.");
+  if (dueAt != null && !validDate(dueAt)) throw new Error("Enter a valid task due date.");
+
+  const item = await new Parse.Query(Item).get(id);
+  if (item.get("kind") !== "task") throw new Error("Only tasks can be edited here.");
+  item.set({ title: title.trim(), manuallyUrgent: manuallyUrgent === true });
+  if (dueAt) item.set("dueAt", dueAt);
+  else item.unset("dueAt");
   return toItem(await item.save());
 }
 

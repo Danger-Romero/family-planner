@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  clockTime, dayLabel, dueLabel, eventTimes, fullDate, isUrgent, peopleOf, planToday, urgencyLabel,
+  clockTime, dateTimeInput, dayLabel, dueLabel, eventTimes, fullDate, isUrgent, peopleOf, planToday,
+  readTaskForm, urgencyLabel,
 } from "../src/services/today.js";
 
 // Monday 19 October 2026, 10:00 local time.
@@ -115,4 +116,27 @@ test("peopleOf splits an item's people into responsible and attending, by name",
     attending: [{ id: "e", name: "Ella" }, { id: "t", name: "Theo" }],
   });
   assert.deepEqual(peopleOf("none", assignments, members), { responsible: [], attending: [] });
+});
+
+test("dateTimeInput gives a date as a datetime-local field's value, in local time", () => {
+  assert.equal(dateTimeInput(at(15)), "2026-10-19T15:00");
+  assert.equal(dateTimeInput(new Date(2026, 0, 5, 7, 5)), "2026-01-05T07:05");
+  assert.equal(dateTimeInput(null), "");
+});
+
+test("readTaskForm turns the task dialog's fields into the values to save", () => {
+  const assignments = [{ member: "ella", role: "responsible" }];
+  assert.deepEqual(
+    readTaskForm({ title: "  Pack football kit ", due: "2026-10-19T15:00", flagged: true, assignments }),
+    { values: { title: "Pack football kit", dueAt: at(15), manuallyUrgent: true, assignments } },
+  );
+  // An empty due field means no date: the task goes under Anytime.
+  assert.deepEqual(
+    readTaskForm({ title: "Call the plumber", due: "", flagged: false, assignments: [] }),
+    { values: { title: "Call the plumber", dueAt: null, manuallyUrgent: false, assignments: [] } },
+  );
+  assert.deepEqual(readTaskForm({ title: "  ", due: "", flagged: false, assignments: [] }), { error: "Enter a title." });
+  assert.deepEqual(readTaskForm({ title: "a", due: "not a date", flagged: false, assignments: [] }), {
+    error: "Enter a valid due date and time.",
+  });
 });

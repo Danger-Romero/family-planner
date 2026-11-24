@@ -1,6 +1,7 @@
 /**
  * MUI Chip styled as the Material 3 Expressive filter chip: a toggle, like the saved views on the
- * Today page ("Everyone", "I'm responsible", "Ella").
+ * Today page ("Everyone", "I'm responsible", "Ella"). For now, chips are only for those saved
+ * (filtered) views; to pick people in a form, use checkboxes (as in the task dialog).
  *
  * | State    | MUI prop                          |
  * | -------- | --------------------------------- |
