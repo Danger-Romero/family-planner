@@ -316,6 +316,32 @@ Tasks and events both use `Item`, distinguished by `kind`. Coordinate changes
 to the shared Item fields, `itemService.js`, components, and routes when
 dividing work between group members.
 
+## Design tokens
+
+The design tokens come from Figma (Tokens Studio, Material Theme Builder) and
+are available to the app as CSS variables. The names follow the Figma names:
+`Schemes / On Surface` → `--schemes-on-surface`.
+
+```css
+.event-card {
+  background: var(--schemes-surface-container);
+  color: var(--schemes-on-surface);
+  box-shadow: var(--m3-elevation-light-1);
+  font-family: var(--material-theme-body-large-font-family);
+}
+```
+
+The **Light** theme is applied by default; the other themes override only the
+`Schemes` colors. Set `data-theme` on an element to switch theme for
+everything inside it, e.g. `<html data-theme="dark">`. Available themes:
+`light`, `light-medium-contrast`, `light-high-contrast`, `dark`,
+`dark-medium-contrast`, `dark-high-contrast`.
+
+To update the tokens from Figma, export them from Tokens Studio as multiple
+files into a `tokens/` folder, run `npm run tokens`, and commit the
+regenerated `src/tokens/generated/tokens.css`. It does not run automatically,
+and the generated file should not be edited by hand.
+
 ## Troubleshooting
 
 | Problem | What to check |
