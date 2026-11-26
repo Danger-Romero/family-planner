@@ -1,5 +1,6 @@
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
+import { layoutDayEvents } from "../services/calendar.js";
 import { clockTime } from "../services/today.js";
 
 const MINUTE = 60_000;
@@ -158,20 +159,54 @@ export default function FamilyDayCalendar({ calendars, selectedDate }) {
             </Typography>
           ))}
         </Box>
-        {calendars.map(({ member }, index) => (
+        {calendars.map(({ member, events }, index) => (
           <Box
             key={`timeline-${member.id}`}
+            component="ul"
+            role="list"
+            aria-label={`Timed events for ${member.name}`}
             sx={{
               gridRow: 3,
               gridColumn: index + 2,
               position: "relative",
               height: `${timelineHeight}px`,
               minWidth: 0,
+              m: 0,
+              p: 0,
+              listStyle: "none",
               borderInlineStart: "1px solid",
               borderColor: "divider",
             }}
           >
-            {/* Timed events will be positioned here. */}
+            {layoutDayEvents(events, selectedDate).map(({
+              event, topMinutes, durationMinutes, lane, laneCount,
+            }) => (
+              <Box
+                key={event.id}
+                component="li"
+                sx={{
+                  position: "absolute",
+                  top: `${topMinutes * PIXELS_PER_MINUTE}px`,
+                  height: `${durationMinutes * PIXELS_PER_MINUTE}px`,
+                  insetInlineStart: `${(lane / laneCount) * 100}%`,
+                  width: `${100 / laneCount}%`,
+                  boxSizing: "border-box",
+                  minWidth: 0,
+                  overflow: "hidden",
+                  border: 1,
+                  borderColor: "divider",
+                  bgcolor: "background.paper",
+                }}
+              >
+                <Typography
+                  component="span"
+                  variant="bodySmall"
+                  sx={{ display: "block", px: 0.5, overflowWrap: "anywhere" }}
+                >
+                  {event.title}
+                </Typography>
+              </Box>
+            ))}
           </Box>
         ))}
       </Box>
