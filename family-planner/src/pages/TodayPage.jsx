@@ -49,12 +49,9 @@ function layOut(items, now) {
  * from the dialog (it may belong somewhere else now). Not when a task is ticked: a ticked urgent
  * task stays where it is (crossed out) instead of jumping away under your finger.
  *
- * `member` is who is signed in: a new item is created by them. `load`, `saveCompleted` and
- * `saveItem` are the services; the stories pass stand-ins for them.
+ * `member` is who is signed in: a new item is created by them.
  */
-export default function TodayPage({
-  family, member, load = loadToday, saveCompleted = setItemCompleted, saveItem = saveItemToDatabase,
-}) {
+export default function TodayPage({ family, member }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -69,7 +66,7 @@ export default function TodayPage({
       setLoading(true);
       setLoadError("");
       try {
-        const loaded = await load(family);
+        const loaded = await loadToday(family);
         if (!active) return;
         // Ids, so the items themselves can change (ticked) without moving.
         setData({ ...loaded, ...layOut(loaded.items, new Date()) });
@@ -84,7 +81,7 @@ export default function TodayPage({
     return () => {
       active = false;
     };
-  }, [family, load, reload]);
+  }, [family, reload]);
 
   function setCompleted(id, completed) {
     setData((current) => ({
@@ -99,7 +96,7 @@ export default function TodayPage({
     // Shown at once; taken back if saving fails.
     setCompleted(task.id, completed);
     try {
-      await saveCompleted(task.id, completed);
+      await setItemCompleted(task.id, completed);
     } catch {
       setCompleted(task.id, !completed);
       setSaveError(`Couldn't save "${task.title}". Try again.`);
@@ -128,7 +125,7 @@ export default function TodayPage({
 
   async function handleSaveItem(item, values) {
     try {
-      const saved = await saveItem({ family, member, item, values });
+      const saved = await saveItemToDatabase({ family, member, item, values });
       showSaved(saved.item, saved.assignments);
     } catch (error) {
       if (error.item) showSaved(error.item);

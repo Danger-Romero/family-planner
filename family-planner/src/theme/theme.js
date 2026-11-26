@@ -1,5 +1,5 @@
 /**
- * The MUI theme for the app and Storybook, styled as Material 3 Expressive.
+ * The MUI theme for the app, styled as Material 3 Expressive.
  *
  * MUI reads every color from the token CSS variables (var(--schemes-…)) instead of fixed values,
  * so the `data-theme` themes (light, dark and the contrast variants) apply to MUI components too,
