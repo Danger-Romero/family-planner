@@ -75,45 +75,62 @@ test("startOfNextDay is tomorrow at midnight, and eventTimes reads events as see
   assert.deepEqual(eventTimes(event("a", at(22), at(2, 0, 20)), tomorrow), { start: "Until", end: "02:00" });
 });
 
-test("planToday puts urgent tasks first and today's other items in time order", () => {
-  const items = [
-    task("sign up", { dueAt: at(12) }),
-    task("pay", { dueAt: at(9, 0, 21), manuallyUrgent: true }),
-    event("school run", at(7, 45), at(8, 15)),
-    task("pack kit", { dueAt: at(15) }),
-    event("football", at(15, 30), at(16, 30)),
-    event("dentist", at(16), at(16, 45)),
-    task("groceries", { dueAt: at(19) }),
-    task("tomorrow", { dueAt: at(9, 0, 20) }),
-    event("tomorrow's event", at(9, 0, 20)),
-    task("done", { dueAt: at(9), completed: true }),
-    event("yesterday", at(20, 0, 18), at(22, 0, 18)),
-    event("ends at midnight", at(22, 0, 18), at(0)),
-    event("night", at(22, 0, 18), at(1)),
-    event("holiday", at(0), at(0, 0, 20), { allDay: true }),
-    task("forgot", { dueAt: at(18, 0, 18) }),
-    task("someday"),
-    task("flagged someday", { manuallyUrgent: true }),
-    task("old chore", { completed: true }),
-  ];
-  const plan = planToday(items, now);
-  assert.deepEqual(plan.urgent.map((item) => item.id), ["forgot", "sign up", "pay", "flagged someday"]);
-  assert.deepEqual(plan.schedule.map((item) => item.id),
-    ["holiday", "night", "school run", "done", "pack kit", "football", "dentist", "groceries"]);
-  // Unfinished tasks without a date: they have no day, so they're always on Today.
-  assert.deepEqual(plan.anytime.map((item) => item.id), ["someday"]);
-});
+const assignment = (item, member, role = "responsible") => ({ item, member, role });
+const ids = (section) => section.map((item) => item.id);
 
-test("tasks without a date are listed under anytime, by title", () => {
-  const plan = planToday([task("Water plants"), task("Fix bike light"), task("Done", { completed: true })], now);
-  assert.deepEqual(plan.anytime.map((item) => item.id), ["Fix bike light", "Water plants"]);
-  assert.deepEqual(plan.urgent, []);
-  assert.deepEqual(plan.schedule, []);
+test("planToday splits the page into urgent, my tasks, not assigned, and events today and tomorrow", () => {
+  const items = [
+    task("mine later", { dueAt: at(9, 0, 21) }),
+    task("mine today", { dueAt: at(15) }),
+    task("mine someday"),
+    task("mine done today", { dueAt: at(9), completed: true }),
+    task("mine done earlier", { dueAt: at(9, 0, 18), completed: true }),
+    task("mine done someday", { completed: true }),
+    task("mine urgent", { dueAt: at(11) }),
+    task("mor's", { dueAt: at(15) }),
+    task("mor's overdue", { dueAt: at(18, 0, 18) }),
+    task("nobody's", { dueAt: at(9, 0, 20) }),
+    task("nobody's someday"),
+    task("nobody's flagged", { manuallyUrgent: true }),
+    event("holiday", at(0), at(0, 0, 20), { allDay: true }),
+    event("school run", at(7, 45), at(8, 15)),
+    event("football", at(15, 30), at(16, 30)),
+    event("night out", at(22), at(2, 0, 20)),
+    event("parents' meeting", at(8, 0, 20)),
+    event("tomorrow all day", at(0, 0, 20), at(0, 0, 21), { allDay: true }),
+    event("yesterday", at(20, 0, 18), at(22, 0, 18)),
+    event("wednesday", at(9, 0, 21)),
+  ];
+  const assignments = [
+    ...["mine later", "mine someday", "mine done today", "mine done earlier", "mine done someday", "mine urgent"]
+      .map((id) => assignment(id, "me")),
+    assignment("mine today", "me", "attending"),
+    assignment("mor's", "mor"),
+    assignment("mor's overdue", "mor"),
+    assignment("football", "mor", "attending"),
+  ];
+  const plan = planToday(items, assignments, "me", now);
+  // Everyone's urgent tasks, overdue and soonest first, flagged ones without a date last.
+  assert.deepEqual(ids(plan.urgent), ["mor's overdue", "mine urgent", "nobody's flagged"]);
+  // Responsible or attending, any date; done only if due today; by due time, undated last.
+  assert.deepEqual(ids(plan.mine), ["mine done today", "mine today", "mine later", "mine someday"]);
+  assert.deepEqual(ids(plan.unassigned), ["nobody's", "nobody's someday"]);
+  // The whole family's events, all-day first, then by time on that day.
+  assert.deepEqual(ids(plan.eventsToday), ["holiday", "school run", "football", "night out"]);
+  assert.deepEqual(ids(plan.eventsTomorrow), ["tomorrow all day", "night out", "parents' meeting"]);
 });
 
 test("items at the same time are in title order", () => {
-  const plan = planToday([event("b", at(15), at(16)), task("a", { dueAt: at(15) })], now);
-  assert.deepEqual(plan.schedule.map((item) => item.id), ["a", "b"]);
+  const items = [task("b", { dueAt: at(15) }), task("a", { dueAt: at(15) }), event("d", at(15), at(16)), event("c", at(15))];
+  const plan = planToday(items, [assignment("a", "me"), assignment("b", "me")], "me", now);
+  assert.deepEqual(ids(plan.mine), ["a", "b"]);
+  assert.deepEqual(ids(plan.eventsToday), ["c", "d"]);
+});
+
+test("without a signed-in member, my tasks is empty and the rest is unchanged", () => {
+  const plan = planToday([task("a", { dueAt: at(15) }), task("b")], [assignment("a", "me")], undefined, now);
+  assert.deepEqual(plan.mine, []);
+  assert.deepEqual(ids(plan.unassigned), ["b"]);
 });
 
 test("peopleOf splits an item's people into responsible and attending, by name", () => {

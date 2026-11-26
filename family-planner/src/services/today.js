@@ -112,25 +112,45 @@ function timeInDay(item, now) {
 
 const byTitle = (first, second) => first.title.localeCompare(second.title);
 
+/** Soonest due first, tasks without a date last; the same due time by title. */
+const byDue = (first, second) =>
+  (first.dueAt ?? Infinity) - (second.dueAt ?? Infinity) || byTitle(first, second);
+
+/** The family's events on the day of `day`: all-day events first, then in time order. */
+function eventsOn(items, day) {
+  return items
+    .filter((item) => item.kind === "event" && isOnDay(item, day))
+    .sort((first, second) => timeInDay(first, day) - timeInDay(second, day) || byTitle(first, second));
+}
+
 /**
- * The three sections of the Today page:
- * - `urgent`: urgent tasks (see isUrgent), overdue and soonest first, flagged ones without a date last;
- * - `schedule`: the day's other tasks and events, all-day events first, then in time order;
- * - `anytime`: unfinished tasks without a date, by title. They belong to no day, so they're on every one.
- * Done tasks stay in the schedule (crossed out). Tasks due on a later day aren't on Today.
+ * The sections of the Today page, for the member `memberId` who is signed in:
+ * - `urgent`: the whole family's urgent tasks (see isUrgent), overdue and soonest first, flagged
+ *   ones without a date last;
+ * - `mine`: the other tasks where `memberId` is responsible or attending, whatever the date;
+ * - `unassigned`: the other tasks nobody is responsible for or attending;
+ * - `eventsToday` and `eventsTomorrow`: the whole family's events on each day, all-day events
+ *   first, then in time order. An event that runs over both days is in both.
+ * `mine` and `unassigned` are soonest due first, tasks without a date last. Each task is in one
+ * section at most: an urgent task is only under `urgent`, and a task only other members have a
+ * role in isn't listed unless it's urgent. A done task stays (crossed out) if it's due today;
+ * other done tasks are left out. `assignments` are { item, member, role } as from loadAssignments.
  */
-export function planToday(items, now) {
-  const urgent = items
-    .filter((item) => isUrgent(item, now))
-    .sort((first, second) =>
-      (first.dueAt ?? Infinity) - (second.dueAt ?? Infinity) || byTitle(first, second));
-  const schedule = items
-    .filter((item) => !isUrgent(item, now) && isOnDay(item, now))
-    .sort((first, second) => timeInDay(first, now) - timeInDay(second, now) || byTitle(first, second));
-  const anytime = items
-    .filter((item) => item.kind === "task" && !item.completed && !item.dueAt && !isUrgent(item, now))
-    .sort(byTitle);
-  return { urgent, schedule, anytime };
+export function planToday(items, assignments, memberId, now) {
+  const assigned = new Set(assignments.map((assignment) => assignment.item));
+  const mineIds = new Set(
+    assignments.filter((assignment) => assignment.member === memberId).map((assignment) => assignment.item),
+  );
+  const urgent = items.filter((item) => isUrgent(item, now)).sort(byDue);
+  const listed = items.filter((item) =>
+    item.kind === "task" && !isUrgent(item, now) && (!item.completed || isOnDay(item, now)));
+  return {
+    urgent,
+    mine: listed.filter((task) => mineIds.has(task.id)).sort(byDue),
+    unassigned: listed.filter((task) => !assigned.has(task.id)).sort(byDue),
+    eventsToday: eventsOn(items, now),
+    eventsTomorrow: eventsOn(items, startOfNextDay(now)),
+  };
 }
 
 /** "2026-10-19": the day of a date as the value of a date field, in local time. "" for no date. */

@@ -4,7 +4,7 @@ import Fab from "@mui/material/Fab";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { useId, useState } from "react";
-import { fullDate, peopleOf } from "../../services/today.js";
+import { fullDate, peopleOf, startOfNextDay } from "../../services/today.js";
 import { barHeight } from "../NavigationBar.jsx";
 import EventCard from "./EventCard.jsx";
 import ItemDialog from "./ItemDialog.jsx";
@@ -34,7 +34,8 @@ function Section({ title, items, renderItem, empty }) {
 }
 
 /**
- * The Today page as it looks: the header, the Urgent, Schedule and Anytime sections and the "+".
+ * The Today page as it looks: the header, the Urgent, My tasks, Not assigned, Events today and
+ * Events tomorrow sections and the "+".
  * It draws what it's given; TodayPage loads and saves the data and planToday (services/today.js)
  * decides what goes where. `savingIds` are tasks whose tick is being saved; `onToggle(task, done)`
  * is called when a task is ticked or unticked.
@@ -46,8 +47,8 @@ function Section({ title, items, renderItem, empty }) {
  * on editing it instead of adding it again. `memberId` is who is signed in.
  */
 export default function TodayView({
-  familyName, now, urgent, schedule, anytime = [], members, assignments, memberId, savingIds = [], error = "",
-  onToggle, onSaveItem,
+  familyName, now, urgent, mine, unassigned = [], eventsToday, eventsTomorrow = [], members, assignments, memberId,
+  savingIds = [], error = "", onToggle, onSaveItem,
 }) {
   // A new key each time it opens, so its fields start from the item again.
   const [dialog, setDialog] = useState({ key: 0, open: false, item: null });
@@ -65,7 +66,8 @@ export default function TodayView({
     }
   }
 
-  const card = (urgentSection) => (item) => {
+  // `day`: the day an event card is listed under, for its times.
+  const card = ({ urgent: urgentSection = false, day = now } = {}) => (item) => {
     const people = peopleOf(item.id, assignments, members);
     return item.kind === "task" ? (
       <TaskCard
@@ -79,7 +81,7 @@ export default function TodayView({
         onEdit={openDialog}
       />
     ) : (
-      <EventCard key={item.id} event={item} people={people} day={now} />
+      <EventCard key={item.id} event={item} people={people} day={day} />
     );
   };
 
@@ -106,9 +108,11 @@ export default function TodayView({
         </Typography>
       )}
 
-      <Section title="Urgent" items={urgent} renderItem={card(true)} />
-      <Section title="Schedule" items={schedule} renderItem={card(false)} empty="Nothing planned for today." />
-      <Section title="Anytime" items={anytime} renderItem={card(false)} />
+      <Section title="Urgent" items={urgent} renderItem={card({ urgent: true })} />
+      <Section title="My tasks" items={mine} renderItem={card()} empty="Nothing for you right now." />
+      <Section title="Not assigned" items={unassigned} renderItem={card()} />
+      <Section title="Events today" items={eventsToday} renderItem={card()} empty="No events today." />
+      <Section title="Events tomorrow" items={eventsTomorrow} renderItem={card({ day: startOfNextDay(now) })} />
 
       <Fab
         aria-label="New task or event"

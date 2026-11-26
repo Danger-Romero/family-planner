@@ -32,17 +32,25 @@ async function saveItemToDatabase({ family, member, item, values }) {
   }
 }
 
-/** The ids in each section (see planToday), and the time they were worked out for. */
-function layOut(items, now) {
-  const plan = planToday(items, now);
+/** The ids in each section (see planToday) for `memberId`, and the time they were worked out for. */
+function layOut(items, assignments, memberId, now) {
+  const plan = planToday(items, assignments, memberId, now);
   const ids = (section) => section.map((item) => item.id);
-  return { now, urgent: ids(plan.urgent), schedule: ids(plan.schedule), anytime: ids(plan.anytime) };
+  return {
+    now,
+    urgent: ids(plan.urgent),
+    mine: ids(plan.mine),
+    unassigned: ids(plan.unassigned),
+    eventsToday: ids(plan.eventsToday),
+    eventsTomorrow: ids(plan.eventsTomorrow),
+  };
 }
 
 /**
- * The Today page. It loads the family's items, members and assignments, lets planToday
- * (services/today.js) decide what's urgent, what's on the schedule and which tasks have no date,
- * and saves a ticked task and a task or event from the item dialog.
+ * The Today page: the signed-in member's overview. It loads the family's items, members and
+ * assignments, lets planToday (services/today.js) decide what's urgent, which tasks are the
+ * member's, which tasks nobody is assigned to, and which events are today and tomorrow, and saves
+ * a ticked task and a task or event from the item dialog.
  * TodayView draws it.
  *
  * Which section an item is in is worked out when the page loads, and again after an item is saved
@@ -69,7 +77,7 @@ export default function TodayPage({ family, member }) {
         const loaded = await loadToday(family);
         if (!active) return;
         // Ids, so the items themselves can change (ticked) without moving.
-        setData({ ...loaded, ...layOut(loaded.items, new Date()) });
+        setData({ ...loaded, ...layOut(loaded.items, loaded.assignments, member?.id, new Date()) });
       } catch (error) {
         if (active) setLoadError(error.message || "Could not load today. Please try again.");
       } finally {
@@ -81,7 +89,7 @@ export default function TodayPage({ family, member }) {
     return () => {
       active = false;
     };
-  }, [family, reload]);
+  }, [family, member?.id, reload]);
 
   function setCompleted(id, completed) {
     setData((current) => ({
@@ -105,20 +113,24 @@ export default function TodayPage({ family, member }) {
     }
   }
 
-  /** Puts an item saved from the dialog on the page, with its `assignments` if they were saved too. */
+  /**
+   * Puts an item saved from the dialog on the page, with its `assignments` if they were saved too.
+   * The sections are worked out with the new assignments, so a task moves if who's involved changed.
+   */
   function showSaved(saved, assignments) {
     setData((current) => {
       const items = current.items.some((item) => item.id === saved.id)
         // The tick shown here wins: a tick may still be on its way to the database.
         ? current.items.map((item) => (item.id === saved.id ? { ...saved, completed: item.completed } : item))
         : [...current.items, saved];
+      const nextAssignments = assignments
+        ? [...current.assignments.filter((assignment) => assignment.item !== saved.id), ...assignments]
+        : current.assignments;
       return {
         ...current,
         items,
-        assignments: assignments
-          ? [...current.assignments.filter((assignment) => assignment.item !== saved.id), ...assignments]
-          : current.assignments,
-        ...layOut(items, new Date()),
+        assignments: nextAssignments,
+        ...layOut(items, nextAssignments, member?.id, new Date()),
       };
     });
   }
@@ -149,13 +161,16 @@ export default function TodayPage({ family, member }) {
   }
 
   const byId = new Map(data.items.map((item) => [item.id, item]));
+  const itemsOf = (ids) => ids.map((id) => byId.get(id));
   return (
     <TodayView
       familyName={family.name}
       now={data.now}
-      urgent={data.urgent.map((id) => byId.get(id))}
-      schedule={data.schedule.map((id) => byId.get(id))}
-      anytime={data.anytime.map((id) => byId.get(id))}
+      urgent={itemsOf(data.urgent)}
+      mine={itemsOf(data.mine)}
+      unassigned={itemsOf(data.unassigned)}
+      eventsToday={itemsOf(data.eventsToday)}
+      eventsTomorrow={itemsOf(data.eventsTomorrow)}
       members={data.members}
       assignments={data.assignments}
       memberId={member?.id}

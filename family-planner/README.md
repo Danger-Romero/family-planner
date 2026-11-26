@@ -72,8 +72,10 @@ server URL before starting.
    it, and tick its box to mark it done. Changing events and deleting items
    aren't in the app for now: the old items page (`/items`) is no longer
    reachable.
-6. **Today** shows unfinished tasks and upcoming or ongoing events, including
-   the names assigned to each role. Log out from **Family** to switch accounts.
+6. **Today** is your own overview: the family's urgent tasks, your tasks
+   (where you're responsible or attending, whatever the date), tasks nobody
+   is assigned to yet, and the family's events today and tomorrow, with the
+   names assigned to each role. Log out from **Family** to switch accounts.
 
 To add a person without a login, leave the username blank on the Family form.
 This creates a member record without creating an account. Linking a login to
