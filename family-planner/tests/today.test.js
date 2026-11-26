@@ -77,6 +77,11 @@ test("startOfNextDay is tomorrow at midnight, and eventTimes reads events as see
 
 const assignment = (item, member, role = "responsible") => ({ item, member, role });
 const ids = (section) => section.map((item) => item.id);
+// Two adults with a login.
+const family = [
+  { id: "me", memberType: "adult", user: "u1" },
+  { id: "mor", memberType: "adult", user: "u2" },
+];
 
 test("planToday splits the page into urgent, my tasks, not assigned, and events today and tomorrow", () => {
   const items = [
@@ -109,7 +114,7 @@ test("planToday splits the page into urgent, my tasks, not assigned, and events 
     assignment("mor's overdue", "mor"),
     assignment("football", "mor", "attending"),
   ];
-  const plan = planToday(items, assignments, "me", now);
+  const plan = planToday(items, assignments, family, "me", now);
   // Everyone's urgent tasks, overdue and soonest first, flagged ones without a date last.
   assert.deepEqual(ids(plan.urgent), ["mor's overdue", "mine urgent", "nobody's flagged"]);
   // Responsible or attending, any date; done only if due today; by due time, undated last.
@@ -122,15 +127,43 @@ test("planToday splits the page into urgent, my tasks, not assigned, and events 
 
 test("items at the same time are in title order", () => {
   const items = [task("b", { dueAt: at(15) }), task("a", { dueAt: at(15) }), event("d", at(15), at(16)), event("c", at(15))];
-  const plan = planToday(items, [assignment("a", "me"), assignment("b", "me")], "me", now);
+  const plan = planToday(items, [assignment("a", "me"), assignment("b", "me")], family, "me", now);
   assert.deepEqual(ids(plan.mine), ["a", "b"]);
   assert.deepEqual(ids(plan.eventsToday), ["c", "d"]);
 });
 
 test("without a signed-in member, my tasks is empty and the rest is unchanged", () => {
-  const plan = planToday([task("a", { dueAt: at(15) }), task("b")], [assignment("a", "me")], undefined, now);
+  const plan = planToday([task("a", { dueAt: at(15) }), task("b")], [assignment("a", "me")], family, undefined, now);
   assert.deepEqual(plan.mine, []);
   assert.deepEqual(ids(plan.unassigned), ["b"]);
+});
+
+test("adults also get the tasks of members without a login, so those tasks aren't lost", () => {
+  const members = [
+    ...family,
+    { id: "kid", memberType: "child", user: "u3" },
+    { id: "emil", memberType: "child", user: null },
+  ];
+  const items = [
+    task("emil's chore"),
+    task("emil and mor", { dueAt: at(9, 0, 21) }),
+    task("gone member's"),
+  ];
+  const assignments = [
+    assignment("emil's chore", "emil"),
+    assignment("emil and mor", "emil"),
+    assignment("emil and mor", "mor", "attending"),
+    // A member who is no longer in the family can't see it either.
+    assignment("gone member's", "ghost"),
+  ];
+  const mineFor = (memberId) => ids(planToday(items, assignments, members, memberId, now).mine);
+  assert.deepEqual(mineFor("me"), ["emil's chore", "gone member's"]);
+  // Mor has a login and a role, so "emil and mor" is only hers.
+  assert.deepEqual(mineFor("mor"), ["emil and mor", "emil's chore", "gone member's"]);
+  // A child with a login only gets their own tasks.
+  assert.deepEqual(mineFor("kid"), []);
+  // They're assigned to someone, so they're never under Not assigned.
+  assert.deepEqual(planToday(items, assignments, members, "me", now).unassigned, []);
 });
 
 test("peopleOf splits an item's people into responsible and attending, by name", () => {

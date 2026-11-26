@@ -127,26 +127,33 @@ function eventsOn(items, day) {
  * The sections of the Today page, for the member `memberId` who is signed in:
  * - `urgent`: the whole family's urgent tasks (see isUrgent), overdue and soonest first, flagged
  *   ones without a date last;
- * - `mine`: the other tasks where `memberId` is responsible or attending, whatever the date;
+ * - `mine`: the other tasks where `memberId` is responsible or attending, whatever the date. An
+ *   adult also gets the tasks whose people all lack a login (a child without a phone, say), since
+ *   nobody involved could see those on their own page;
  * - `unassigned`: the other tasks nobody is responsible for or attending;
  * - `eventsToday` and `eventsTomorrow`: the whole family's events on each day, all-day events
  *   first, then in time order. An event that runs over both days is in both.
  * `mine` and `unassigned` are soonest due first, tasks without a date last. Each task is in one
  * section at most: an urgent task is only under `urgent`, and a task only other members have a
  * role in isn't listed unless it's urgent. A done task stays (crossed out) if it's due today;
- * other done tasks are left out. `assignments` are { item, member, role } as from loadAssignments.
+ * other done tasks are left out. `assignments` are { item, member, role } as from loadAssignments;
+ * `members` are the family's members, as from loadMembers.
  */
-export function planToday(items, assignments, memberId, now) {
-  const assigned = new Set(assignments.map((assignment) => assignment.item));
-  const mineIds = new Set(
-    assignments.filter((assignment) => assignment.member === memberId).map((assignment) => assignment.item),
-  );
+export function planToday(items, assignments, members, memberId, now) {
+  const withLogin = new Set(members.filter((member) => member.user).map((member) => member.id));
+  const isAdult = members.some((member) => member.id === memberId && member.memberType === "adult");
+  const itemsOf = (list) => new Set(list.map((assignment) => assignment.item));
+  const assigned = itemsOf(assignments);
+  const mineIds = itemsOf(assignments.filter((assignment) => assignment.member === memberId));
+  // Tasks someone with a login is involved in, so it's on their page.
+  const seen = itemsOf(assignments.filter((assignment) => withLogin.has(assignment.member)));
+  const isMine = (task) => mineIds.has(task.id) || (isAdult && assigned.has(task.id) && !seen.has(task.id));
   const urgent = items.filter((item) => isUrgent(item, now)).sort(byDue);
   const listed = items.filter((item) =>
     item.kind === "task" && !isUrgent(item, now) && (!item.completed || isOnDay(item, now)));
   return {
     urgent,
-    mine: listed.filter((task) => mineIds.has(task.id)).sort(byDue),
+    mine: listed.filter(isMine).sort(byDue),
     unassigned: listed.filter((task) => !assigned.has(task.id)).sort(byDue),
     eventsToday: eventsOn(items, now),
     eventsTomorrow: eventsOn(items, startOfNextDay(now)),

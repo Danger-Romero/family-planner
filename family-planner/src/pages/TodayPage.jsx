@@ -33,8 +33,8 @@ async function saveItemToDatabase({ family, member, item, values }) {
 }
 
 /** The ids in each section (see planToday) for `memberId`, and the time they were worked out for. */
-function layOut(items, assignments, memberId, now) {
-  const plan = planToday(items, assignments, memberId, now);
+function layOut(items, assignments, members, memberId, now) {
+  const plan = planToday(items, assignments, members, memberId, now);
   const ids = (section) => section.map((item) => item.id);
   return {
     now,
@@ -77,7 +77,7 @@ export default function TodayPage({ family, member }) {
         const loaded = await loadToday(family);
         if (!active) return;
         // Ids, so the items themselves can change (ticked) without moving.
-        setData({ ...loaded, ...layOut(loaded.items, loaded.assignments, member?.id, new Date()) });
+        setData({ ...loaded, ...layOut(loaded.items, loaded.assignments, loaded.members, member?.id, new Date()) });
       } catch (error) {
         if (active) setLoadError(error.message || "Could not load today. Please try again.");
       } finally {
@@ -130,7 +130,7 @@ export default function TodayPage({ family, member }) {
         ...current,
         items,
         assignments: nextAssignments,
-        ...layOut(items, nextAssignments, member?.id, new Date()),
+        ...layOut(items, nextAssignments, current.members, member?.id, new Date()),
       };
     });
   }

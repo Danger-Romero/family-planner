@@ -75,7 +75,9 @@ server URL before starting.
 6. **Today** is your own overview: the family's urgent tasks, your tasks
    (where you're responsible or attending, whatever the date), tasks nobody
    is assigned to yet, and the family's events today and tomorrow, with the
-   names assigned to each role. Log out from **Family** to switch accounts.
+   names assigned to each role. Adults also see, under their tasks, the tasks
+   of family members without a login. Log out from **Family** to switch
+   accounts.
 
 To add a person without a login, leave the username blank on the Family form.
 This creates a member record without creating an account. Linking a login to
