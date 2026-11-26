@@ -4,9 +4,12 @@ import Typography from "@mui/material/Typography";
 import { eventTimes } from "../../services/today.js";
 import People from "./People.jsx";
 
-/** One event on the Today page: its times in a 48px column (as wide as a task's checkbox), its title and its people. */
-export default function EventCard({ event, people, now }) {
-  const { start, end } = eventTimes(event, now);
+/**
+ * One event on the Today page: its times in a 48px column (as wide as a task's checkbox), its title and its people.
+ * `day` is any time on the day the card is listed under; the times are as seen on that day.
+ */
+export default function EventCard({ event, people, day }) {
+  const { start, end } = eventTimes(event, day);
   return (
     <Card component="li" variant="outlined">
       <Stack direction="row" sx={{ gap: 0.5, alignItems: "flex-start", p: 1.5, pl: 0.5 }}>

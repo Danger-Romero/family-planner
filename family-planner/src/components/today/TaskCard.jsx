@@ -6,7 +6,7 @@ import CardActionArea from "@mui/material/CardActionArea";
 import Checkbox from "@mui/material/Checkbox";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import { clockTime, dueLabel, urgencyLabel } from "../../services/today.js";
+import { deadlineLabel, dueLabel, urgencyLabel } from "../../services/today.js";
 import People from "./People.jsx";
 
 /**
@@ -22,8 +22,9 @@ import People from "./People.jsx";
 export default function TaskCard({ task, people, now, urgent = false, saving = false, onToggle, onEdit }) {
   const reason = urgent ? urgencyLabel(task, now) : null;
   const ReasonIcon = reason === "Flagged" ? Flag : Schedule;
-  // Urgent: the day or time it's due. Otherwise "by 15:00", or nothing for a task without a date.
-  const when = urgent ? dueLabel(task, now) : task.dueAt ? `by ${clockTime(task.dueAt)}` : "";
+  // Urgent: the day or time it's due. Otherwise "by 15:00" today, the day ("Wed 21 Oct") on another
+  // day, or nothing for a task without a date.
+  const when = urgent ? dueLabel(task, now) : deadlineLabel(task, now);
 
   return (
     <Card component="li" variant="outlined" color={urgent ? "error" : undefined} sx={{ position: "relative" }}>

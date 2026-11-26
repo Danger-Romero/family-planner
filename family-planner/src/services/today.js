@@ -15,7 +15,8 @@ function startOfDay(date) {
   return start;
 }
 
-function startOfNextDay(date) {
+/** Midnight at the start of the day after `date`. */
+export function startOfNextDay(date) {
   const next = startOfDay(date);
   next.setDate(next.getDate() + 1);
   return next;
@@ -59,6 +60,12 @@ export function urgencyLabel(task, now) {
 export function dueLabel(task, now) {
   if (!task.dueAt) return "";
   return sameDay(task.dueAt, now) ? clockTime(task.dueAt) : dayLabel(task.dueAt);
+}
+
+/** When a task that isn't urgent is due: "by 15:00" today, "Wed 21 Oct" on another day, "" without a date. */
+export function deadlineLabel(task, now) {
+  if (!task.dueAt) return "";
+  return sameDay(task.dueAt, now) ? `by ${clockTime(task.dueAt)}` : dayLabel(task.dueAt);
 }
 
 /** Does the event take up the whole of the day that `now` is in? */

@@ -79,7 +79,7 @@ export default function TodayView({
         onEdit={openDialog}
       />
     ) : (
-      <EventCard key={item.id} event={item} people={people} now={now} />
+      <EventCard key={item.id} event={item} people={people} day={now} />
     );
   };
 

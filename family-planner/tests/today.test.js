@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  clockTime, dateInput, dayLabel, dueLabel, eventTimes, fullDate, isUrgent, peopleOf, planToday,
-  readItemForm, rolesOf, timeInput, urgencyLabel,
+  clockTime, dateInput, dayLabel, deadlineLabel, dueLabel, eventTimes, fullDate, isUrgent, peopleOf, planToday,
+  readItemForm, rolesOf, startOfNextDay, timeInput, urgencyLabel,
 } from "../src/services/today.js";
 
 // Monday 19 October 2026, 10:00 local time.
@@ -59,6 +59,20 @@ test("eventTimes fills the time column, also for events that cross midnight", ()
   assert.deepEqual(eventTimes(event("a", at(22, 0, 18), at(1)), now), { start: "Until", end: "01:00" });
   assert.deepEqual(eventTimes(event("a", at(22), at(2, 0, 20)), now), { start: "22:00", end: "Tue" });
   assert.deepEqual(eventTimes(event("a", at(12, 0, 18), at(12, 0, 20)), now), { start: "All day", end: null });
+});
+
+test("deadlineLabel says when a task that isn't urgent is due", () => {
+  assert.equal(deadlineLabel(task("a", { dueAt: at(15) }), now), "by 15:00");
+  assert.equal(deadlineLabel(task("a", { dueAt: at(9, 0, 21) }), now), "Wed 21 Oct");
+  assert.equal(deadlineLabel(task("a", { dueAt: at(18, 0, 18), completed: true }), now), "Sun 18 Oct");
+  assert.equal(deadlineLabel(task("a"), now), "");
+});
+
+test("startOfNextDay is tomorrow at midnight, and eventTimes reads events as seen on that day", () => {
+  const tomorrow = startOfNextDay(now);
+  assert.deepEqual(tomorrow, at(0, 0, 20));
+  assert.deepEqual(eventTimes(event("a", at(8, 0, 20), at(9, 0, 20)), tomorrow), { start: "08:00", end: "09:00" });
+  assert.deepEqual(eventTimes(event("a", at(22), at(2, 0, 20)), tomorrow), { start: "Until", end: "02:00" });
 });
 
 test("planToday puts urgent tasks first and today's other items in time order", () => {
