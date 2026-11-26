@@ -1,0 +1,202 @@
+// The rules of the Today page: which items it shows, in which section and order, and how their
+// times read. Plain functions of the loaded items and the time `now`, so they can be tested
+// without a database or a browser (tests/today.test.js). The page's components only draw what
+// these return.
+
+/** A task due within this many hours (or overdue, or flagged) is urgent. */
+export const URGENT_WITHIN_HOURS = 3;
+
+const HOUR = 60 * 60 * 1000;
+const MINUTE = 60 * 1000;
+
+function startOfDay(date) {
+  const start = new Date(date);
+  start.setHours(0, 0, 0, 0);
+  return start;
+}
+
+function startOfNextDay(date) {
+  const next = startOfDay(date);
+  next.setDate(next.getDate() + 1);
+  return next;
+}
+
+const sameDay = (first, second) => startOfDay(first).getTime() === startOfDay(second).getTime();
+
+const pad = (number) => String(number).padStart(2, "0");
+
+/** "07:45": the 24-hour clock, as on the wireframe. */
+export const clockTime = (date) =>
+  `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+
+/** "Wed 21 Oct" */
+export const dayLabel = (date) =>
+  date.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+
+/** "Mon 19 October", for the page header. */
+export const fullDate = (date) =>
+  date.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "long" });
+
+/** True for an unfinished task that is flagged, overdue or due within URGENT_WITHIN_HOURS. */
+export function isUrgent(item, now) {
+  if (item.kind !== "task" || item.completed) return false;
+  if (item.manuallyUrgent) return true;
+  return Boolean(item.dueAt) && item.dueAt - now <= URGENT_WITHIN_HOURS * HOUR;
+}
+
+/** Why an urgent task is urgent: "Overdue", "Due in 45 min", "Due in 2 h" or "Flagged". */
+export function urgencyLabel(task, now) {
+  if (task.dueAt) {
+    const left = task.dueAt - now;
+    if (left < 0) return "Overdue";
+    if (left < HOUR) return `Due in ${Math.max(1, Math.ceil(left / MINUTE))} min`;
+    if (left <= URGENT_WITHIN_HOURS * HOUR) return `Due in ${Math.floor(left / HOUR)} h`;
+  }
+  return task.manuallyUrgent ? "Flagged" : null;
+}
+
+/** When a task is due: "12:00" today, "Wed 21 Oct" on another day, "" without a date. */
+export function dueLabel(task, now) {
+  if (!task.dueAt) return "";
+  return sameDay(task.dueAt, now) ? clockTime(task.dueAt) : dayLabel(task.dueAt);
+}
+
+/** Does the event take up the whole of the day that `now` is in? */
+function allDayOn(event, now) {
+  if (event.allDay) return true;
+  return Boolean(event.endsAt) && event.startsAt < startOfDay(now) && event.endsAt >= startOfNextDay(now);
+}
+
+/**
+ * The time column of an event on the day of `now`: { start: "07:45", end: "08:15" }. An event
+ * that started on an earlier day reads "Until 01:00"; one that ends on a later day shows that
+ * day ("Tue"); one that fills the day reads "All day". `end` is null when there's nothing to show.
+ */
+export function eventTimes(event, now) {
+  if (allDayOn(event, now)) return { start: "All day", end: null };
+  const dayStart = startOfDay(now);
+  const nextDay = startOfNextDay(now);
+  const start = event.startsAt < dayStart ? "Until" : clockTime(event.startsAt);
+  let end = null;
+  if (event.endsAt) {
+    end = event.endsAt > nextDay
+      ? event.endsAt.toLocaleDateString("en-GB", { weekday: "short" })
+      : clockTime(event.endsAt);
+  }
+  return { start, end };
+}
+
+/** Is the item on the day of `now`: a task due that day, or an event that overlaps it? */
+function isOnDay(item, now) {
+  const dayStart = startOfDay(now);
+  const nextDay = startOfNextDay(now);
+  if (item.kind === "task") return Boolean(item.dueAt) && item.dueAt >= dayStart && item.dueAt < nextDay;
+  if (!item.startsAt) return false;
+  if (!item.endsAt) return item.startsAt >= dayStart && item.startsAt < nextDay;
+  return item.startsAt < nextDay && item.endsAt > dayStart;
+}
+
+/** Where an item sits in the day: all-day events first, then by time. */
+function timeInDay(item, now) {
+  if (item.kind === "task") return item.dueAt.getTime();
+  if (allDayOn(item, now)) return -Infinity;
+  return Math.max(item.startsAt.getTime(), startOfDay(now).getTime());
+}
+
+const byTitle = (first, second) => first.title.localeCompare(second.title);
+
+/**
+ * The three sections of the Today page:
+ * - `urgent`: urgent tasks (see isUrgent), overdue and soonest first, flagged ones without a date last;
+ * - `schedule`: the day's other tasks and events, all-day events first, then in time order;
+ * - `anytime`: unfinished tasks without a date, by title. They belong to no day, so they're on every one.
+ * Done tasks stay in the schedule (crossed out). Tasks due on a later day aren't on Today.
+ */
+export function planToday(items, now) {
+  const urgent = items
+    .filter((item) => isUrgent(item, now))
+    .sort((first, second) =>
+      (first.dueAt ?? Infinity) - (second.dueAt ?? Infinity) || byTitle(first, second));
+  const schedule = items
+    .filter((item) => !isUrgent(item, now) && isOnDay(item, now))
+    .sort((first, second) => timeInDay(first, now) - timeInDay(second, now) || byTitle(first, second));
+  const anytime = items
+    .filter((item) => item.kind === "task" && !item.completed && !item.dueAt && !isUrgent(item, now))
+    .sort(byTitle);
+  return { urgent, schedule, anytime };
+}
+
+/** "2026-10-19": the day of a date as the value of a date field, in local time. "" for no date. */
+export function dateInput(date) {
+  if (!date) return "";
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+/** "15:00": the time of a date as the value of a time field. "" for no date. */
+export const timeInput = (date) => (date ? clockTime(date) : "");
+
+/**
+ * Who is involved in an item, from its assignments: { [member id]: "responsible" | "attending" }.
+ * Members who aren't involved are left out. One role each: someone stored with both is responsible.
+ */
+export function rolesOf(assignments) {
+  const roles = {};
+  for (const { member, role } of assignments) {
+    if (role === "responsible" || !roles[member]) roles[member] = role;
+  }
+  return roles;
+}
+
+/** A date field's and a time field's values as a Date in local time, or null if they aren't valid. */
+function dateAt(date, time) {
+  const value = new Date(`${date}T${time}`);
+  return Number.isNaN(value.getTime()) ? null : value;
+}
+
+/**
+ * The item dialog's fields as the values to save, or { error } saying what to fix.
+ *
+ * The fields are { kind, title, date, time, starts, ends, allDay, important, roles }: `date` as a
+ * date field's value ("2026-10-19"), `time`, `starts` and `ends` as time fields' ("15:00"), and
+ * `roles` as from rolesOf.
+ * - A task is due on `date` at `time` (the end of the day without a time), or has no date.
+ *   Gives { values: { kind, title, dueAt, manuallyUrgent, assignments } }.
+ * - An event is on `date`, from `starts` to `ends` (no end without one), or all day.
+ *   Gives { values: { kind, title, startsAt, endsAt, allDay, assignments } }.
+ */
+export function readItemForm({ kind, title, date, time, starts, ends, allDay, important, roles }) {
+  if (!title.trim()) return { error: "Enter a title." };
+  const assignments = Object.entries(roles).map(([member, role]) => ({ member, role }));
+  const values = { kind, title: title.trim() };
+
+  if (kind === "task") {
+    const dueAt = date ? dateAt(date, time || "23:59") : null;
+    if (date && !dueAt) return { error: "Enter a valid date and deadline." };
+    return { values: { ...values, dueAt, manuallyUrgent: important, assignments } };
+  }
+
+  if (!date) return { error: "Pick the day of the event." };
+  if (allDay) {
+    const startsAt = dateAt(date, "00:00");
+    if (!startsAt) return { error: "Enter a valid date." };
+    return { values: { ...values, startsAt, endsAt: null, allDay: true, assignments } };
+  }
+  if (!starts) return { error: "Enter when the event starts." };
+  const startsAt = dateAt(date, starts);
+  const endsAt = ends ? dateAt(date, ends) : null;
+  if (!startsAt || (ends && !endsAt)) return { error: "Enter a valid date and time." };
+  if (endsAt && endsAt <= startsAt) return { error: "The event has to end after it starts." };
+  return { values: { ...values, startsAt, endsAt, allDay: false, assignments } };
+}
+
+/** An item's people: { responsible: [members], attending: [members] }, each by name. */
+export function peopleOf(itemId, assignments, members) {
+  const byId = new Map(members.map((member) => [member.id, member]));
+  const withRole = (role) =>
+    assignments
+      .filter((assignment) => assignment.item === itemId && assignment.role === role)
+      .map((assignment) => byId.get(assignment.member))
+      .filter(Boolean)
+      .sort((first, second) => first.name.localeCompare(second.name));
+  return { responsible: withRole("responsible"), attending: withRole("attending") };
+}
