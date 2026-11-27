@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Item from "../components/Item.jsx";
-import MemberCalendar from "../components/MemberCalendar.jsx";
+import FamilyDayCalendar from "../components/FamilyDayCalendar.jsx";
+import { calendarEventEnd } from "../services/calendar.js";
 import { loadItems } from "../services/itemService.js";
 import { loadMembers } from "../services/memberService.js";
 import { loadAssignments } from "../services/assignmentService.js";
@@ -29,11 +30,7 @@ export default function CalendarPage({ family }) {
     }
 
     if (item.kind === "event" && item.startsAt) {
-      if (!item.endsAt) {
-        return item.startsAt >= start && item.startsAt < end;
-      }
-
-      return item.startsAt < end && item.endsAt > start;
+      return item.startsAt < end && calendarEventEnd(item.startsAt, item.endsAt) > start;
     }
 
     return false;
@@ -100,8 +97,7 @@ export default function CalendarPage({ family }) {
       id: item.id,
       title: item.title,
       start: item.startsAt.toISOString(),
-      end: (item.endsAt ?? new Date(item.startsAt.getTime() + 30 * 60 * 1000)) //Events without an end time gets a 30 minute slot
-        .toISOString(),
+      end: calendarEventEnd(item.startsAt, item.endsAt).toISOString(),
       allDay: item.allDay,
     }));
 
@@ -190,25 +186,14 @@ export default function CalendarPage({ family }) {
           <section>
             <h3>Events</h3>
 
-            <Box
-              sx={{
-                display: "grid",
-                gap: 0.5,
-                gridTemplateColumns: `repeat(${Math.max(memberCalendars.length, 1)}, minmax(0, 1fr))`,
-              }}
-            >
-              {memberCalendars.map(({ member, events }) => (
-                <MemberCalendar
-                  key={member.id}
-                  member={member}
-                  events={events}
-                  selectedDate={selectedDate}
-                />
-              ))}
-            </Box>
-
-            {memberCalendars.length === 0 && (
-              <p>No assigned events for this date.</p>
+            {memberCalendars.length === 0 ? (
+              <p>No family members to show.</p>
+            ) : (
+              <FamilyDayCalendar
+                key={selectedDate.getTime()}
+                calendars={memberCalendars}
+                selectedDate={selectedDate}
+              />
             )}
           </section>
 
