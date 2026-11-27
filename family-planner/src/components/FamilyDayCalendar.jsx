@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import ButtonBase from "@mui/material/ButtonBase";
@@ -120,6 +120,7 @@ function EventTile({ event, member, interactive, fill = false, onOpen }) {
 /** Shared day calendar; each calendar contains a member and their events for the selected day. */
 export default function FamilyDayCalendar({ calendars, selectedDate }) {
   const scroller = useRef(null);
+  const timelineStart = useRef(null);
   const closeButton = useRef(null);
   const titleId = useId();
   const descriptionId = useId();
@@ -179,6 +180,30 @@ export default function FamilyDayCalendar({ calendars, selectedDate }) {
       top: ((time - dayStart.getTime()) / MINUTE) * PIXELS_PER_MINUTE,
     });
   }
+
+  const morning = new Date(dayStart);
+  morning.setHours(8, 0, 0, 0);
+  const eightAmMinutes = (morning - dayStart) / MINUTE;
+  const eventStarts = calendars.flatMap(({ events }) =>
+    layoutDayEvents(events, selectedDate).map(({ topMinutes }) => topMinutes),
+  );
+  const startMinutes = Math.min(eightAmMinutes, ...eventStarts);
+
+  useLayoutEffect(() => {
+    const container = scroller.current;
+    const timeline = timelineStart.current;
+    if (!container || !timeline) return;
+
+    const headerHeight =
+      container.querySelector("h4")?.getBoundingClientRect().height ?? 0;
+
+    container.scrollTop +=
+      timeline.getBoundingClientRect().top -
+      container.getBoundingClientRect().top -
+      container.clientTop -
+      headerHeight +
+      startMinutes * PIXELS_PER_MINUTE;
+  }, [selectedDate, startMinutes]);
 
   return (
     <>
@@ -371,6 +396,7 @@ export default function FamilyDayCalendar({ calendars, selectedDate }) {
             ))}
           </Box>
           <Box
+            ref={timelineStart}
             aria-hidden="true"
             sx={{
               gridRow: 3,
